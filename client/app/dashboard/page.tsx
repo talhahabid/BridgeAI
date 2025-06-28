@@ -285,25 +285,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Progress Tracking */}
-          <div className="card hover:shadow-lg transition-shadow cursor-pointer"
-               onClick={() => router.push('/dashboard/progress')}>
-            <div className="flex items-center mb-4">
-              <div className="p-3 bg-indigo-100 rounded-lg">
-                <TrendingUp className="w-6 h-6 text-indigo-600" />
-              </div>
-              <h3 className="ml-3 text-lg font-semibold text-gray-900">Progress Tracking</h3>
-            </div>
-            <p className="text-gray-600 mb-4">
-              Track your progress toward Canadian certification
-            </p>
-            <div className="flex items-center text-sm text-indigo-600">
-              <span>View Progress</span>
-              <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </div>
+       
 
           
         </div>
