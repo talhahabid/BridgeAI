@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Depends, Request
 import os
 
 # Password hashing
@@ -53,4 +53,17 @@ def get_current_user_id(token: str) -> str:
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return user_id 
+    return user_id
+
+def get_current_user(request: Request):
+    """FastAPI dependency to get the current user from the Authorization header."""
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing or invalid Authorization header",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    token = auth_header.split(" ", 1)[1]
+    user_id = get_current_user_id(token)
+    return {"id": user_id} 
