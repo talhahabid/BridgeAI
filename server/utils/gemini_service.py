@@ -3,13 +3,21 @@ import os
 from typing import Dict, List, Any
 from datetime import datetime
 
-# Configure Gemini API
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-genai.configure(api_key=GEMINI_API_KEY)
-
 class GeminiService:
     def __init__(self):
-        self.model = genai.GenerativeModel('gemini-pro')
+        # Configure Gemini API only if API key is available
+        self.api_key = os.getenv("GEMINI_API_KEY")
+        if self.api_key:
+            try:
+                genai.configure(api_key=self.api_key)
+                self.model = genai.GenerativeModel('gemini-pro')
+                self.is_configured = True
+            except Exception as e:
+                print(f"Failed to configure Gemini API: {e}")
+                self.is_configured = False
+        else:
+            print("GEMINI_API_KEY not found in environment variables")
+            self.is_configured = False
     
     async def generate_qualification_path(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -21,6 +29,14 @@ class GeminiService:
         Returns:
             Dictionary containing the generated qualification path
         """
+        
+        # Check if Gemini is properly configured
+        if not self.is_configured:
+            return {
+                "success": False,
+                "error": "Gemini API is not properly configured. Please set GEMINI_API_KEY environment variable.",
+                "generated_at": datetime.utcnow().isoformat()
+            }
         
         # Extract user information
         job_preference = user_data.get('job_preference', '')
@@ -51,7 +67,7 @@ class GeminiService:
         except Exception as e:
             return {
                 "success": False,
-                "error": str(e),
+                "error": f"Gemini API error: {str(e)}",
                 "generated_at": datetime.utcnow().isoformat()
             }
     

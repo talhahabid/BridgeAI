@@ -275,8 +275,21 @@ async def generate_qualification_path(
             'resume_keywords': user.get('resume_keywords', [])
         }
         
-        # Generate qualification path using Gemini
-        result = await gemini_service.generate_qualification_path(user_data)
+        # Check if Gemini API key is available
+        import os
+        gemini_api_key = os.getenv("GEMINI_API_KEY")
+        
+        if not gemini_api_key:
+            # Generate fallback qualification path without Gemini
+            result = generate_fallback_qualification_path(user_data)
+        else:
+            # Generate qualification path using Gemini
+            result = await gemini_service.generate_qualification_path(user_data)
+            
+            # If Gemini fails, fall back to the basic method
+            if not result.get('success'):
+                print(f"Gemini API failed: {result.get('error')}")
+                result = generate_fallback_qualification_path(user_data)
         
         if not result.get('success'):
             raise HTTPException(
@@ -317,6 +330,155 @@ async def generate_qualification_path(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error generating qualification path: {str(e)}"
         )
+
+def generate_fallback_qualification_path(user_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Generate a fallback qualification path when Gemini API is not available."""
+    
+    job_preference = user_data.get('job_preference', '').lower()
+    location = user_data.get('location', 'Canada')
+    
+    # Create a basic qualification path based on common patterns
+    if 'doctor' in job_preference or 'physician' in job_preference or 'medical' in job_preference:
+        qualification_path = {
+            "job_title": "Medical Doctor",
+            "province": location,
+            "estimated_total_time": "3-5 years",
+            "steps": [
+                {
+                    "step_number": 1,
+                    "title": "Credential Evaluation",
+                    "description": "Get your medical degree evaluated by the Medical Council of Canada",
+                    "estimated_duration": "2-3 months",
+                    "requirements": ["Original medical degree", "Medical school transcripts"],
+                    "cost_estimate": "CAD $500-800",
+                    "resources": ["Medical Council of Canada", "WES Canada"],
+                    "notes": "Start this process early as it's required for all medical professionals"
+                },
+                {
+                    "step_number": 2,
+                    "title": "MCCQE Part I",
+                    "description": "Take the Medical Council of Canada Qualifying Examination Part I",
+                    "estimated_duration": "6-12 months",
+                    "requirements": ["Study materials", "Exam registration"],
+                    "cost_estimate": "CAD $1,200-1,500",
+                    "resources": ["MCCQE study guides", "Practice exams"],
+                    "notes": "This is a computer-based exam testing medical knowledge"
+                },
+                {
+                    "step_number": 3,
+                    "title": "NAC OSCE",
+                    "description": "Take the National Assessment Collaboration Objective Structured Clinical Examination",
+                    "estimated_duration": "3-6 months",
+                    "requirements": ["Clinical skills", "Exam registration"],
+                    "cost_estimate": "CAD $2,000-2,500",
+                    "resources": ["NAC OSCE preparation courses"],
+                    "notes": "This exam tests clinical skills and patient interaction"
+                },
+                {
+                    "step_number": 4,
+                    "title": "Residency Application",
+                    "description": "Apply for residency programs through CaRMS",
+                    "estimated_duration": "6-12 months",
+                    "requirements": ["Completed exams", "Application materials"],
+                    "cost_estimate": "CAD $500-1,000",
+                    "resources": ["CaRMS", "Provincial medical associations"],
+                    "notes": "Competitive process - apply to multiple programs"
+                }
+            ],
+            "summary": "Path to become a licensed medical doctor in Canada",
+            "important_notes": ["Start credential evaluation early", "Prepare thoroughly for exams", "Network with medical professionals"],
+            "regulatory_bodies": ["Medical Council of Canada", "Provincial medical colleges"]
+        }
+    elif 'engineer' in job_preference:
+        qualification_path = {
+            "job_title": "Professional Engineer",
+            "province": location,
+            "estimated_total_time": "2-4 years",
+            "steps": [
+                {
+                    "step_number": 1,
+                    "title": "Academic Assessment",
+                    "description": "Have your engineering degree assessed by the provincial engineering association",
+                    "estimated_duration": "2-3 months",
+                    "requirements": ["Engineering degree", "Transcripts"],
+                    "cost_estimate": "CAD $200-500",
+                    "resources": ["Provincial engineering associations", "WES Canada"],
+                    "notes": "Different provinces have different requirements"
+                },
+                {
+                    "step_number": 2,
+                    "title": "Professional Practice Exam",
+                    "description": "Take the Professional Practice Exam",
+                    "estimated_duration": "3-6 months",
+                    "requirements": ["Study materials", "Exam registration"],
+                    "cost_estimate": "CAD $300-600",
+                    "resources": ["PPE study guides", "Practice exams"],
+                    "notes": "Tests knowledge of engineering law and ethics"
+                },
+                {
+                    "step_number": 3,
+                    "title": "Work Experience",
+                    "description": "Complete required engineering work experience under supervision",
+                    "estimated_duration": "48 months",
+                    "requirements": ["Engineering work", "Supervisor evaluation"],
+                    "cost_estimate": "CAD $0 (paid position)",
+                    "resources": ["Engineering employers", "Professional mentors"],
+                    "notes": "Must be under the supervision of a P.Eng."
+                }
+            ],
+            "summary": "Path to become a licensed professional engineer in Canada",
+            "important_notes": ["Join engineering associations early", "Network with other engineers", "Keep detailed work records"],
+            "regulatory_bodies": ["Provincial engineering associations"]
+        }
+    else:
+        # Generic path for other professions
+        qualification_path = {
+            "job_title": job_preference.title(),
+            "province": location,
+            "estimated_total_time": "1-3 years",
+            "steps": [
+                {
+                    "step_number": 1,
+                    "title": "Credential Evaluation",
+                    "description": "Get your foreign credentials evaluated by a recognized Canadian organization",
+                    "estimated_duration": "2-3 months",
+                    "requirements": ["Original documents", "Translation if needed"],
+                    "cost_estimate": "CAD $200-400",
+                    "resources": ["WES Canada", "ICAS", "CES"],
+                    "notes": "Start this process early as it's required for most professions"
+                },
+                {
+                    "step_number": 2,
+                    "title": "Language Proficiency",
+                    "description": "Take required language tests (IELTS, CELPIP, or French tests)",
+                    "estimated_duration": "1-2 months",
+                    "requirements": ["Study materials", "Test registration"],
+                    "cost_estimate": "CAD $300-400",
+                    "resources": ["IELTS", "CELPIP", "TEF"],
+                    "notes": "Most professions require CLB 7 or higher"
+                },
+                {
+                    "step_number": 3,
+                    "title": "Professional Certification",
+                    "description": "Research and obtain required professional certifications for your field",
+                    "estimated_duration": "3-12 months",
+                    "requirements": ["Study materials", "Exam registration"],
+                    "cost_estimate": "CAD $500-2,000",
+                    "resources": ["Professional associations", "Training programs"],
+                    "notes": "Requirements vary by profession and province"
+                }
+            ],
+            "summary": f"Basic qualification path for {job_preference} in Canada",
+            "important_notes": ["Research provincial requirements", "Network with professionals in your field", "Start early"],
+            "regulatory_bodies": ["Check provincial regulatory bodies for your profession"]
+        }
+    
+    return {
+        "success": True,
+        "qualification_path": qualification_path,
+        "generated_at": datetime.utcnow().isoformat(),
+        "raw_response": "Generated using fallback method (Gemini API not available)"
+    }
 
 @router.get("/path")
 async def get_qualification_path(
