@@ -305,25 +305,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Resume Templates */}
-          <div className="card hover:shadow-lg transition-shadow cursor-pointer"
-               onClick={() => router.push('/dashboard/templates')}>
-            <div className="flex items-center mb-4">
-              <div className="p-3 bg-pink-100 rounded-lg">
-                <FileText className="w-6 h-6 text-pink-600" />
-              </div>
-              <h3 className="ml-3 text-lg font-semibold text-gray-900">Resume Templates</h3>
-            </div>
-            <p className="text-gray-600 mb-4">
-              Access Canadian job market styled resume templates
-            </p>
-            <div className="flex items-center text-sm text-pink-600">
-              <span>Browse Templates</span>
-              <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </div>
+          
         </div>
       </div>
     </div>
