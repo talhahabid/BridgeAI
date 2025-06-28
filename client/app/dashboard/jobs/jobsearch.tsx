@@ -43,6 +43,7 @@ export default function JobRecommendations() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalResults, setTotalResults] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [appliedCount, setAppliedCount] = useState(0);
   const router = useRouter();
 
   // Fetch user profile on mount
@@ -70,6 +71,9 @@ export default function JobRecommendations() {
       }
     };
     fetchProfileAndJobs();
+    // Sync appliedCount from localStorage
+    const storedApplied = parseInt(localStorage.getItem('appliedCount') || '0', 10);
+    setAppliedCount(storedApplied);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -218,6 +222,13 @@ export default function JobRecommendations() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center px-6 py-3 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
+                        onClick={() => {
+                          setAppliedCount((count) => {
+                            const newCount = count + 1;
+                            localStorage.setItem('appliedCount', newCount.toString());
+                            return newCount;
+                          });
+                        }}
                       >
                         Apply Now
                         <svg className="ml-2 -mr-1 w-4 h-4" fill="currentColor" viewBox="0 0 20 20">

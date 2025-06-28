@@ -36,6 +36,7 @@ export default function Dashboard() {
   const [user, setUser] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
+  const [appliedCount, setAppliedCount] = useState(0)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -46,6 +47,16 @@ export default function Dashboard() {
 
     fetchUserProfile()
   }, [router])
+
+  useEffect(() => {
+    const updateApplied = () => {
+      const stored = parseInt(localStorage.getItem('appliedCount') || '0', 10)
+      setAppliedCount(stored)
+    }
+    updateApplied()
+    window.addEventListener('focus', updateApplied)
+    return () => window.removeEventListener('focus', updateApplied)
+  }, [])
 
   const fetchUserProfile = async () => {
     try {
@@ -196,8 +207,8 @@ export default function Dashboard() {
                 <Search className="w-6 h-6 text-orange-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Jobs Found</p>
-                <p className="text-2xl font-bold text-gray-900">0</p>
+                <p className="text-sm font-medium text-gray-600">Jobs Applied</p>
+                <p className="text-2xl font-bold text-gray-900">{appliedCount}</p>
               </div>
             </div>
           </div>
