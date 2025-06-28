@@ -293,10 +293,59 @@ export default function QualificationsPage() {
                 </div>
                 <div className="flex items-center justify-between mt-2 text-sm text-gray-600">
                   <span>{qualificationData.progress.completion_percentage}% Complete</span>
-                  <span className="flex items-center">
-                    <Clock className="w-4 h-4 mr-1" />
-                    Started {formatDate(qualificationData.progress.started_at)}
-                  </span>
+                  <div className="flex items-center space-x-4">
+                    <span className="flex items-center">
+                      <Clock className="w-4 h-4 mr-1" />
+                      Started {formatDate(qualificationData.progress.started_at)}
+                    </span>
+                    <span className="flex items-center">
+                      <Calendar className="w-4 h-4 mr-1" />
+                      Last updated {formatDate(qualificationData.progress.last_updated)}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Progress Stats */}
+                <div className="grid grid-cols-3 gap-4 mt-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-primary-600">
+                      {qualificationData.progress.completed_steps.length}
+                    </div>
+                    <div className="text-xs text-gray-600">Steps Completed</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-gray-600">
+                      {qualificationData.progress.total_steps - qualificationData.progress.completed_steps.length}
+                    </div>
+                    <div className="text-xs text-gray-600">Steps Remaining</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">
+                      {Math.round(qualificationData.progress.completion_percentage)}%
+                    </div>
+                    <div className="text-xs text-gray-600">Overall Progress</div>
+                  </div>
+                </div>
+                
+                {/* Progress Summary */}
+                <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-1">Progress Summary</h4>
+                      <p className="text-sm text-gray-600">
+                        {qualificationData.progress.completion_percentage === 0 && "You're just getting started! Complete your first step to begin your journey."}
+                        {qualificationData.progress.completion_percentage > 0 && qualificationData.progress.completion_percentage < 25 && "Great start! Keep up the momentum and tackle the next step."}
+                        {qualificationData.progress.completion_percentage >= 25 && qualificationData.progress.completion_percentage < 50 && "You're making excellent progress! You're well on your way to achieving your goals."}
+                        {qualificationData.progress.completion_percentage >= 50 && qualificationData.progress.completion_percentage < 75 && "You're more than halfway there! Stay focused and keep pushing forward."}
+                        {qualificationData.progress.completion_percentage >= 75 && qualificationData.progress.completion_percentage < 100 && "Almost there! You're in the final stretch of your qualification journey."}
+                        {qualificationData.progress.completion_percentage === 100 && "Congratulations! You've completed all steps in your qualification path!"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm text-gray-600">Estimated completion</div>
+                      <div className="font-medium text-gray-900">{qualificationData.qualification_path.estimated_total_time}</div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -346,8 +395,18 @@ export default function QualificationsPage() {
               <div className="space-y-6">
                 {qualificationData.qualification_path.steps.map((step) => {
                   const isCompleted = qualificationData.progress.completed_steps.includes(step.step_number)
+                  const stepIndex = step.step_number - 1
+                  const previousStepCompleted = stepIndex === 0 || qualificationData.progress.completed_steps.includes(step.step_number - 1)
+                  const isNextStep = !isCompleted && previousStepCompleted
+                  
                   return (
-                    <div key={step.step_number} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
+                    <div key={step.step_number} className={`border rounded-lg p-6 transition-all duration-300 ${
+                      isCompleted 
+                        ? 'border-green-200 bg-green-50 shadow-md' 
+                        : isNextStep 
+                          ? 'border-blue-200 bg-blue-50 shadow-sm' 
+                          : 'border-gray-200 hover:shadow-md'
+                    }`}>
                       <div className="flex items-start justify-between">
                         <div className="flex items-start space-x-4">
                           <button
@@ -356,7 +415,9 @@ export default function QualificationsPage() {
                             className={`mt-1 p-1 rounded-full transition-colors ${
                               isCompleted 
                                 ? 'text-green-600 hover:text-green-700' 
-                                : 'text-gray-400 hover:text-gray-600'
+                                : isNextStep
+                                  ? 'text-blue-600 hover:text-blue-700'
+                                  : 'text-gray-400 hover:text-gray-600'
                             }`}
                           >
                             {isCompleted ? (
@@ -373,9 +434,11 @@ export default function QualificationsPage() {
                               <span className={`px-2 py-1 text-xs rounded-full ${
                                 isCompleted 
                                   ? 'bg-green-100 text-green-800' 
-                                  : 'bg-gray-100 text-gray-600'
+                                  : isNextStep
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-gray-100 text-gray-600'
                               }`}>
-                                {isCompleted ? 'Completed' : 'Pending'}
+                                {isCompleted ? 'Completed' : isNextStep ? 'Next Step' : 'Pending'}
                               </span>
                             </div>
                             <p className="text-gray-600 mb-4">{step.description}</p>
@@ -388,6 +451,22 @@ export default function QualificationsPage() {
                               <div className="flex items-center text-gray-600">
                                 <DollarSign className="w-4 h-4 mr-2" />
                                 <span>Cost: {step.cost_estimate}</span>
+                              </div>
+                            </div>
+
+                            {/* Step Progress Indicator */}
+                            <div className="mt-4">
+                              <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                                <span>Step Progress</span>
+                                <span>{isCompleted ? '100%' : '0%'}</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className={`h-2 rounded-full transition-all duration-300 ${
+                                    isCompleted ? 'bg-green-500' : 'bg-gray-300'
+                                  }`}
+                                  style={{ width: isCompleted ? '100%' : '0%' }}
+                                ></div>
                               </div>
                             </div>
 
