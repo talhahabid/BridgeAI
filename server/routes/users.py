@@ -30,6 +30,9 @@ async def get_profile(
                 detail="User not found"
             )
         
+        # Convert ObjectId to string for the response
+        user["_id"] = str(user["_id"])
+        
         return UserResponse(**user)
         
     except HTTPException:
@@ -149,6 +152,9 @@ async def get_user_by_id(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found"
             )
+        
+        # Convert ObjectId to string for the response
+        user["_id"] = str(user["_id"])
         
         return UserResponse(**user)
         

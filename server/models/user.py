@@ -53,7 +53,7 @@ class UserInDB(UserBase):
         json_encoders = {ObjectId: str}
 
 class UserResponse(BaseModel):
-    id: str = Field(alias="_id")
+    id: Optional[str] = Field(None, alias="_id")
     name: str = Field(..., min_length=1, max_length=100)
     email: EmailStr
     location: str = Field(..., description="Canadian province")

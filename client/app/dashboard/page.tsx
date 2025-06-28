@@ -50,15 +50,16 @@ export default function Dashboard() {
   const fetchUserProfile = async () => {
     try {
       const token = localStorage.getItem('token')
+      const userId = localStorage.getItem('userId')
       
-      if (!token) {
+      if (!token || !userId) {
         localStorage.removeItem('token')
         localStorage.removeItem('userId')
         router.push('/')
         return
       }
       
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/users/profile`, {
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/users/by-id/${userId}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       

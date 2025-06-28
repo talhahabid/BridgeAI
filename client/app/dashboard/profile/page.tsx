@@ -43,13 +43,14 @@ export default function ProfilePage() {
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem('token')
+      const userId = localStorage.getItem('userId')
       
-      if (!token) {
+      if (!token || !userId) {
         router.push('/')
         return
       }
       
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/users/profile`, {
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/users/by-id/${userId}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       
@@ -97,14 +98,15 @@ export default function ProfilePage() {
     setIsSaving(true)
     try {
       const token = localStorage.getItem('token')
+      const userId = localStorage.getItem('userId')
       
-      if (!token) {
+      if (!token || !userId) {
         router.push('/')
         return
       }
       
       await axios.put(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/users/profile`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/users/by-id/${userId}`,
         formData,
         {
           headers: { Authorization: `Bearer ${token}` }
