@@ -118,16 +118,16 @@ export default function Home() {
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-black mb-1">
                     Email
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-black w-5 h-5" />
                     <input
                       type="email"
                       value={formData.email}
                       onChange={(e) => handleInputChange('email', e.target.value)}
-                      className="input-field pl-10"
+                      className="input-field pl-10 text-black"
                       placeholder="Enter your email"
                       required
                     />
@@ -144,7 +144,7 @@ export default function Home() {
                       type="password"
                       value={formData.password}
                       onChange={(e) => handleInputChange('password', e.target.value)}
-                      className="input-field pl-10"
+                      className="input-field pl-10 text-black"
                       placeholder="Enter your password"
                       required
                       minLength={8}
@@ -194,7 +194,7 @@ export default function Home() {
                           type="text"
                           value={formData.job_preference}
                           onChange={(e) => handleInputChange('job_preference', e.target.value)}
-                          className="input-field pl-10"
+                          className="input-field pl-10 text-black"
                           placeholder="e.g., Software Engineer, Doctor, Teacher"
                           required={!isLogin}
                         />
@@ -211,7 +211,7 @@ export default function Home() {
                           type="text"
                           value={formData.origin_country}
                           onChange={(e) => handleInputChange('origin_country', e.target.value)}
-                          className="input-field pl-10"
+                          className="input-field pl-10 text-black"
                           placeholder="e.g., India, China, Philippines"
                           required={!isLogin}
                         />

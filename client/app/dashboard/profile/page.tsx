@@ -250,7 +250,7 @@ export default function ProfilePage() {
                     name="location"
                     value={formData.location}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-black"
                   >
                     <option value="">Select a province</option>
                     <option value="Alberta">Alberta</option>
@@ -278,7 +278,7 @@ export default function ProfilePage() {
                     name="job_preference"
                     value={formData.job_preference}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-black"
                     placeholder="e.g., Software Developer, Data Analyst"
                   />
                 </div>
@@ -292,7 +292,7 @@ export default function ProfilePage() {
                     name="origin_country"
                     value={formData.origin_country}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-black"
                     placeholder="e.g., India, China, Philippines"
                   />
                 </div>

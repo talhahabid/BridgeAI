@@ -5,9 +5,15 @@ from bson import ObjectId
 from datetime import datetime
 from typing import Dict, Any, List
 
+
 from utils.auth import get_current_user_id
 from utils.gemini_service import GeminiService
 from database import get_database
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
 
 router = APIRouter()
 security = HTTPBearer()
@@ -276,7 +282,7 @@ async def generate_qualification_path(
         }
         
         # Check if Gemini API key is available
-        import os
+        
         gemini_api_key = os.getenv("GEMINI_API_KEY")
         
         if not gemini_api_key:
