@@ -1,130 +1,120 @@
-from fastapi import APIRouter, HTTPException, status, Depends, Query
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from motor.motor_asyncio import AsyncIOMotorDatabase
-from typing import List, Optional
-import json
+import os
+import httpx
+from fastapi import APIRouter, Query, HTTPException
+from typing import Optional
+from dotenv import load_dotenv
 
-from database import get_database
+# Load environment variables
+load_dotenv()
 
 router = APIRouter()
-security = HTTPBearer()
 
-# Mock job data - in a real app, this would come from job APIs
-MOCK_JOBS = [
-    {
-        "id": "1",
-        "title": "Software Engineer",
-        "company": "TechCorp Canada",
-        "location": "Toronto, ON",
-        "type": "Full-time",
-        "salary": "$80,000 - $120,000",
-        "description": "We are looking for a skilled software engineer...",
-        "requirements": ["Python", "JavaScript", "React", "3+ years experience"],
-        "posted_date": "2024-01-15"
-    },
-    {
-        "id": "2",
-        "title": "Data Analyst",
-        "company": "DataFlow Inc",
-        "location": "Vancouver, BC",
-        "type": "Full-time",
-        "salary": "$70,000 - $90,000",
-        "description": "Join our data team to analyze business metrics...",
-        "requirements": ["SQL", "Python", "Excel", "Statistics"],
-        "posted_date": "2024-01-14"
-    },
-    {
-        "id": "3",
-        "title": "Marketing Manager",
-        "company": "Growth Marketing",
-        "location": "Montreal, QC",
-        "type": "Full-time",
-        "salary": "$75,000 - $95,000",
-        "description": "Lead our marketing initiatives...",
-        "requirements": ["Marketing", "Digital Marketing", "Leadership"],
-        "posted_date": "2024-01-13"
-    }
-]
+JSEARCH_API_URL = "https://jsearch.p.rapidapi.com/search"
+RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY")
+
+# Print the API key (masked for security)
+if RAPIDAPI_KEY:
+    print(f"Loaded RAPIDAPI_KEY: {'*' * (len(RAPIDAPI_KEY)-4) + RAPIDAPI_KEY[-4:]}")
+else:
+    print("Warning: RAPIDAPI_KEY not found in environment variables")
+
+HEADERS = {
+    "x-rapidapi-key": RAPIDAPI_KEY,
+    "x-rapidapi-host": "jsearch.p.rapidapi.com"
+}
 
 @router.get("/search")
 async def search_jobs(
-    title: Optional[str] = Query(None, description="Job title to search for"),
-    location: Optional[str] = Query(None, description="Location to search in"),
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    title: Optional[str] = Query(None, description="Job title or keywords"),
+    location: Optional[str] = Query(None, description="Job location"),
+    page: int = Query(1, ge=1, description="Page number"),
+    num_pages: int = Query(1, ge=1, le=10, description="Number of pages to fetch"),
+    country: str = Query("ca", description="Country code (default: ca)"),
+    date_posted: str = Query("all", description="Date posted filter (default: all)")
 ):
-    """Search for jobs based on title and location."""
+    """
+    Search for jobs using RapidAPI JSearch
+    """
+    if not RAPIDAPI_KEY:
+        raise HTTPException(status_code=500, detail="RapidAPI key not configured")
+    
+    # Build search query
+    query_parts = []
+    if title:
+        query_parts.append(title)
+    if location:
+        query_parts.append(f"in {location}")
+    
+    if not query_parts:
+        query_parts = ["software", "in Canada"]  # Default search
+    
+    search_query = " ".join(query_parts)
+    
     try:
-        # In a real implementation, this would call job APIs
-        # For now, we'll filter the mock data
-        filtered_jobs = MOCK_JOBS
-        
-        if title:
-            filtered_jobs = [job for job in filtered_jobs 
-                           if title.lower() in job["title"].lower()]
-        
-        if location:
-            filtered_jobs = [job for job in filtered_jobs 
-                           if location.lower() in job["location"].lower()]
-        
-        return {
-            "jobs": filtered_jobs,
-            "total": len(filtered_jobs),
-            "filters": {
-                "title": title,
-                "location": location
-            }
-        }
-        
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error searching jobs: {str(e)}"
-        )
-
-@router.get("/{job_id}")
-async def get_job_details(
-    job_id: str,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncIOMotorDatabase = Depends(get_database)
-):
-    """Get detailed information about a specific job."""
-    try:
-        # Find job in mock data
-        job = next((job for job in MOCK_JOBS if job["id"] == job_id), None)
-        
-        if not job:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Job not found"
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(
+                JSEARCH_API_URL, 
+                params={
+                    "query": search_query,
+                    "page": str(page),
+                    "num_pages": str(num_pages),
+                    "country": country,
+                    "date_posted": date_posted
+                }, 
+                headers=HEADERS
             )
-        
-        return job
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving job details: {str(e)}"
-        )
+            
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=response.status_code, 
+                    detail=f"RapidAPI error: {response.text}"
+                )
 
-@router.get("/recommendations")
-async def get_job_recommendations(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncIOMotorDatabase = Depends(get_database)
-):
-    """Get job recommendations based on user profile."""
-    try:
-        # In a real implementation, this would analyze user skills and preferences
-        # For now, return a subset of mock jobs
-        return {
-            "recommendations": MOCK_JOBS[:2],
-            "reason": "Based on your profile and skills"
-        }
+        data = response.json()
         
+        # Extract and format job data
+        jobs = data.get("data", [])
+        formatted_jobs = []
+        
+        for job in jobs:
+            formatted_job = {
+                "job_title": job.get("job_title", "N/A"),
+                "company_name": job.get("employer_name", "N/A"),
+                "job_city": job.get("job_city", "N/A"),
+                "job_state": job.get("job_state", "N/A"),
+                "job_country": job.get("job_country", "N/A"),
+                "job_apply_link": job.get("job_apply_link", ""),
+                "job_description": job.get("job_description", "No description available"),
+                "job_employment_type": job.get("job_employment_type", "N/A"),
+                "job_salary": job.get("job_salary", "N/A"),
+                "job_posted_at": job.get("job_posted_at", "N/A"),
+                "job_required_skills": job.get("job_required_skills", []),
+                "job_required_experience": job.get("job_required_experience", "N/A"),
+                "job_required_education": job.get("job_required_education", "N/A")
+            }
+            formatted_jobs.append(formatted_job)
+        
+        return {
+            "results": formatted_jobs,
+            "total_results": len(formatted_jobs),
+            "search_query": search_query,
+            "page": page
+        }
+
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=408, detail="Request timeout")
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=500, detail=f"Request error: {str(e)}")
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error getting recommendations: {str(e)}"
-        ) 
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+@router.get("/health")
+async def health_check():
+    """
+    Check if the job search API is working
+    """
+    return {
+        "status": "healthy",
+        "rapidapi_configured": bool(RAPIDAPI_KEY),
+        "service": "job-search"
+    }
