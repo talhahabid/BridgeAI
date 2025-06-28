@@ -1,13 +1,24 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 import json
 from datetime import datetime
 
 from websocket_manager import manager
+from utils.auth import verify_token
 
 router = APIRouter()
 
 @router.websocket("/ws/chat/{user_id}")
-async def websocket_endpoint(websocket: WebSocket, user_id: str):
+async def websocket_endpoint(
+    websocket: WebSocket, 
+    user_id: str,
+    token: str = Query(...)
+):
+    # Verify the token
+    verified_user_id = verify_token(token)
+    if not verified_user_id or verified_user_id != user_id:
+        await websocket.close(code=4001, reason="Unauthorized")
+        return
+    
     await manager.connect(websocket, user_id)
     try:
         while True:

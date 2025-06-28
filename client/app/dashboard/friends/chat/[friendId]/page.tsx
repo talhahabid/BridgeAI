@@ -53,7 +53,20 @@ export default function ChatPage() {
   }, [messages])
 
   const connectWebSocket = (userId: string) => {
-    const wsUrl = `ws://localhost:8000/ws/chat/${userId}`
+    // Get authentication token
+    const token = localStorage.getItem('token')
+    if (!token) {
+      console.error('No authentication token found')
+      return
+    }
+    
+    // Use environment variable for WebSocket URL, fallback to localhost for development
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const wsHost = process.env.NEXT_PUBLIC_WS_URL || window.location.hostname
+    const wsPort = process.env.NEXT_PUBLIC_WS_PORT || '8000'
+    const wsUrl = `${wsProtocol}//${wsHost}:${wsPort}/ws/chat/${userId}?token=${encodeURIComponent(token)}`
+    
+    console.log('Connecting to WebSocket:', wsUrl)
     const ws = new WebSocket(wsUrl)
     
     ws.onopen = () => {
@@ -66,12 +79,22 @@ export default function ChatPage() {
       handleWebSocketMessage(data)
     }
     
-    ws.onclose = () => {
-      console.log('WebSocket disconnected')
+    ws.onclose = (event) => {
+      console.log('WebSocket disconnected:', event.code, event.reason)
       setIsConnected(false)
+      
+      // Don't reconnect if unauthorized
+      if (event.code === 4001) {
+        console.error('WebSocket unauthorized, redirecting to login')
+        localStorage.removeItem('token')
+        localStorage.removeItem('userId')
+        router.push('/')
+        return
+      }
+      
       // Try to reconnect after 3 seconds
       setTimeout(() => {
-        if (localStorage.getItem('userId')) {
+        if (localStorage.getItem('userId') && localStorage.getItem('token')) {
           connectWebSocket(localStorage.getItem('userId')!)
         }
       }, 3000)
