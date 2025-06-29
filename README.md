@@ -1,4 +1,4 @@
-# ImmigrantJobFinder
+# BridgeAI
 
 A full-stack web application to help immigrants find jobs and understand how to become qualified in Canada.
 
