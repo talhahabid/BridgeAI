@@ -200,7 +200,7 @@ async def evaluate_resume_ats(
     """
     try:
         # Validate file type
-        if not resume_file.filename.lower().endswith('.pdf'):
+        if not resume_file.filename or not resume_file.filename.lower().endswith('.pdf'):
             raise HTTPException(status_code=400, detail="Only PDF files are supported")
         
         # Save uploaded file temporarily
@@ -290,8 +290,8 @@ async def evaluate_resume_ats(
 
 @router.get("/download")
 async def download_resume(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    request: Request = None
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Download the current user's resume file."""
     try:
@@ -340,10 +340,10 @@ async def download_resume(
 
 @router.post("/generate-documents")
 async def generate_tailored_documents(
+    request: Request,
     job_description: str = Form(...),
     document_type: str = Form(..., description="cover_letter, optimized_resume, or both"),
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    request: Request = None
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """
     Generate AI-powered tailored documents (cover letter and/or optimized resume)
@@ -484,9 +484,9 @@ async def create_latex_pdf(content: str, document_type: str, user_name: str) -> 
 
 @router.get("/preview-generated/{file_path:path}")
 async def preview_generated_document(
+    request: Request,
     file_path: str,
-    token: str = Query(..., description="Authentication token"),
-    request: Request = None
+    token: str = Query(..., description="Authentication token")
 ):
     """Preview a generated document in iframe"""
     try:
@@ -521,8 +521,8 @@ async def preview_generated_document(
 @router.get("/download-generated/{file_path:path}")
 async def download_generated_document(
     file_path: str,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    request: Request = None
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Download a generated document"""
     try:
