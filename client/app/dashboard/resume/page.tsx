@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import axios from 'axios'
 import { useDropzone } from 'react-dropzone'
-import { Upload, FileText, X, Check, Eye, Download } from 'lucide-react'
+import { Upload, FileText, X, Check, Eye, Download, Target, Loader2, Star } from 'lucide-react'
 
 interface ResumeData {
   resume_text: string
@@ -15,10 +15,21 @@ interface ResumeData {
   has_resume: boolean
 }
 
+interface ATSEvaluation {
+  success: boolean
+  feedback: string[]
+  resume_filename: string
+  job_description_preview: string
+}
+
 export default function ResumePage() {
   const [resumeData, setResumeData] = useState<ResumeData | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+  const [showATSEvaluation, setShowATSEvaluation] = useState(false)
+  const [jobDescription, setJobDescription] = useState('')
+  const [atsEvaluation, setAtsEvaluation] = useState<ATSEvaluation | null>(null)
+  const [isEvaluating, setIsEvaluating] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -90,8 +101,73 @@ export default function ResumePage() {
       })
       toast.success('Resume removed successfully')
       setResumeData(null)
+      setAtsEvaluation(null)
     } catch (error: any) {
       toast.error('Failed to remove resume')
+    }
+  }
+
+  const evaluateATS = async () => {
+    if (!jobDescription.trim()) {
+      toast.error('Please enter a job description')
+      return
+    }
+
+    if (!resumeData?.has_resume) {
+      toast.error('Please upload a resume first')
+      return
+    }
+
+    setIsEvaluating(true)
+    try {
+      const token = localStorage.getItem('token')
+      
+      // Get the resume file from the server
+      const resumeResponse = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/resumes/download`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      })
+
+      // Check if we got a valid PDF file
+      if (resumeResponse.data.type !== 'application/pdf' && resumeResponse.data.size === 0) {
+        toast.error('Resume file not found. Please upload your resume again.')
+        return
+      }
+
+      // Create a file from the blob
+      const resumeFile = new File([resumeResponse.data], resumeData.resume_filename, {
+        type: 'application/pdf'
+      })
+
+      // Create form data for ATS evaluation
+      const formData = new FormData()
+      formData.append('resume_file', resumeFile)
+      formData.append('job_description', jobDescription)
+
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/resumes/ats-evaluate`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      )
+
+      setAtsEvaluation(response.data)
+      toast.success('ATS evaluation completed!')
+    } catch (error: any) {
+      console.error('ATS evaluation error:', error)
+      if (error.response?.status === 404) {
+        toast.error('Resume file not found. Please upload your resume again.')
+      } else if (error.response?.status === 500 && error.response?.data?.detail?.includes('Chrome driver')) {
+        toast.error('ATS evaluation service is not available. Please try again later.')
+      } else {
+        toast.error(error.response?.data?.detail || 'Failed to evaluate resume')
+      }
+    } finally {
+      setIsEvaluating(false)
     }
   }
 
@@ -111,7 +187,7 @@ export default function ResumePage() {
           </button>
           <h1 className="text-3xl font-bold text-gray-900">Resume Management</h1>
           <p className="text-gray-600 mt-2">
-            Upload your resume to get AI-powered analysis and keyword extraction
+            Upload your resume to get AI-powered analysis, keyword extraction, and ATS optimization feedback
           </p>
         </div>
 
@@ -160,6 +236,13 @@ export default function ResumePage() {
                 <h2 className="text-xl font-semibold text-gray-900">Resume Analysis</h2>
                 <div className="flex space-x-2">
                   <button
+                    onClick={() => setShowATSEvaluation(!showATSEvaluation)}
+                    className="btn-primary flex items-center"
+                  >
+                    <Target className="w-4 h-4 mr-2" />
+                    ATS Evaluation
+                  </button>
+                  <button
                     onClick={() => setShowPreview(!showPreview)}
                     className="btn-secondary flex items-center"
                   >
@@ -206,6 +289,79 @@ export default function ResumePage() {
                 </div>
               </div>
             </div>
+
+            {/* ATS Evaluation Section */}
+            {showATSEvaluation && (
+              <div className="card">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                  <Target className="w-5 h-5 mr-2 text-primary-600" />
+                  ATS Resume Evaluation
+                </h2>
+                <p className="text-gray-600 mb-6">
+                  Get AI-powered feedback on how well your resume matches a specific job description and passes through Applicant Tracking Systems.
+                </p>
+                <p className="text-sm text-gray-500 mb-4 bg-blue-50 p-3 rounded-lg">
+                  💡 <strong>How it works:</strong> Our AI analyzes your resume against the job description using advanced ATS screening technology. This process happens automatically in the background and typically takes 30-60 seconds.
+                </p>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Job Description
+                    </label>
+                    <textarea
+                      value={jobDescription}
+                      onChange={(e) => setJobDescription(e.target.value)}
+                      placeholder="Paste the job description here to evaluate your resume against it..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-black min-h-32"
+                      rows={8}
+                    />
+                  </div>
+
+                  <button
+                    onClick={evaluateATS}
+                    disabled={isEvaluating || !jobDescription.trim()}
+                    className="btn-primary flex items-center justify-center w-full"
+                  >
+                    {isEvaluating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Analyzing Resume with AI...
+                      </>
+                    ) : (
+                      <>
+                        <Star className="w-4 h-4 mr-2" />
+                        Evaluate Resume for ATS
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* ATS Evaluation Results */}
+                {atsEvaluation && (
+                  <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                      <Star className="w-5 h-5 mr-2 text-blue-600" />
+                      ATS Evaluation Results
+                    </h3>
+                    <div className="space-y-3">
+                      {atsEvaluation.feedback.map((feedback, index) => (
+                        <div key={index} className="flex items-start">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                          <p className="text-gray-700 text-sm leading-relaxed">{feedback}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-blue-200">
+                      <p className="text-xs text-gray-500">
+                        <strong>Resume:</strong> {atsEvaluation.resume_filename} | 
+                        <strong> Job:</strong> {atsEvaluation.job_description_preview}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Full Text Preview */}
             {showPreview && resumeData.resume_text && (
