@@ -46,6 +46,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
   const [appliedCount, setAppliedCount] = useState(0)
+  const [friendsCount, setFriendsCount] = useState(0)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -65,6 +66,14 @@ export default function Dashboard() {
     updateApplied()
     window.addEventListener('focus', updateApplied)
     return () => window.removeEventListener('focus', updateApplied)
+  }, [])
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/friends/friends`, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(res => setFriendsCount(res.data.length)).catch(() => setFriendsCount(0))
   }, [])
 
   const fetchUserProfile = async () => {
@@ -324,7 +333,7 @@ export default function Dashboard() {
                   <Users className="w-6 h-6 text-orange-400" />
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-white">12</p>
+                  <p className="text-2xl font-bold text-white">{friendsCount}</p>
                   <p className="text-xs text-slate-400">Connections</p>
                 </div>
               </div>

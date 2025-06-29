@@ -158,29 +158,29 @@ export default function FriendsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-white/5 shadow-sm border-b border-slate-700/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => router.push('/dashboard')}
-                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900"
+                className="flex items-center space-x-2 text-slate-200 hover:text-white"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>Back to Dashboard</span>
               </button>
             </div>
             <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold text-gray-900">Connect with People</h1>
+              <h1 className="text-2xl font-bold text-white">Connect with People</h1>
             </div>
           </div>
         </div>
@@ -189,51 +189,37 @@ export default function FriendsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Tabs */}
         <div className="mb-8">
-          <div className="border-b border-gray-200">
+          <div className="border-b border-slate-700/50">
             <nav className="-mb-px flex space-x-8">
               <button
                 onClick={() => setActiveTab('discover')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                   activeTab === 'discover'
-                    ? 'border-indigo-500 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-indigo-400 text-indigo-300'
+                    : 'border-transparent text-slate-400 hover:text-white hover:border-slate-500'
                 }`}
               >
-                <div className="flex items-center space-x-2">
-                  <Users className="w-4 h-4" />
-                  <span>Discover People</span>
-                </div>
+                Discover
               </button>
               <button
                 onClick={() => setActiveTab('requests')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                   activeTab === 'requests'
-                    ? 'border-indigo-500 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-indigo-400 text-indigo-300'
+                    : 'border-transparent text-slate-400 hover:text-white hover:border-slate-500'
                 }`}
               >
-                <div className="flex items-center space-x-2">
-                  <UserPlus className="w-4 h-4" />
-                  <span>Friend Requests</span>
-                  {friendRequests.length > 0 && (
-                    <span className="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">
-                      {friendRequests.length}
-                    </span>
-                  )}
-                </div>
+                Requests
               </button>
               <button
                 onClick={() => setActiveTab('friends')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                   activeTab === 'friends'
-                    ? 'border-indigo-500 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-indigo-400 text-indigo-300'
+                    : 'border-transparent text-slate-400 hover:text-white hover:border-slate-500'
                 }`}
               >
-                <div className="flex items-center space-x-2">
-                  <UserCheck className="w-4 h-4" />
-                  <span>My Friends</span>
-                </div>
+                Friends
               </button>
             </nav>
           </div>
