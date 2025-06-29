@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import { toast } from 'react-hot-toast'
-import { ArrowLeft, Send, User, Trash2, MoreVertical } from 'lucide-react'
+import { ArrowLeft, Send, User, Trash2, MoreVertical, Wifi, WifiOff } from 'lucide-react'
 import { chatService, ChatMessage } from '../../../../services/chatService'
 
 export default function ChatPage() {
