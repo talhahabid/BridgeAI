@@ -209,74 +209,77 @@ async def evaluate_resume_ats(
             temp_file.write(content)
             temp_file_path = temp_file.name
         
-        # Initialize Chrome driver
-        chrome_driver_path = os.path.join(os.getcwd(), "chrome_driver", "chromedriver.exe")
-        if not os.path.exists(chrome_driver_path):
-            raise HTTPException(status_code=500, detail="Chrome driver not found")
-        
-        # Configure Chrome options for headless operation
-        chrome_options = webdriver.ChromeOptions()
-        chrome_options.add_argument("--headless")  # Run in background
-        chrome_options.add_argument("--no-sandbox")  # Required for some environments
-        chrome_options.add_argument("--disable-dev-shm-usage")  # Disable shared memory
-        chrome_options.add_argument("--disable-gpu")  # Disable GPU acceleration
-        chrome_options.add_argument("--window-size=1920,1080")  # Set window size
-        chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")  # Set user agent
-        chrome_options.add_argument("--disable-extensions")  # Disable extensions
-        chrome_options.add_argument("--disable-plugins")  # Disable plugins
-        chrome_options.add_argument("--disable-images")  # Disable images for faster loading
-        chrome_options.add_argument("--log-level=3")  # Minimize logging
-        chrome_options.add_experimental_option("excludeSwitches", ["enable-logging"])  # Disable logging
-        chrome_options.add_experimental_option('useAutomationExtension', False)  # Disable automation extension
-        
-        service = Service(chrome_driver_path)
-        driver = webdriver.Chrome(service=service, options=chrome_options)
-        
         try:
-            # Navigate to Hugging Face ATS screener
-            driver.get("https://huggingface.co/spaces/santu24/ATS-Resume-Screener")
+            # Initialize Chrome driver
+            chrome_driver_path = os.path.join(os.getcwd(), "chrome_driver", "chromedriver.exe")
+            if not os.path.exists(chrome_driver_path):
+                raise Exception("Chrome driver not found")
             
-            # Wait for iframe and switch to it
-            wait = WebDriverWait(driver, 15)
-            iframe = wait.until(EC.presence_of_element_located((By.ID, "iFrameResizer0")))
-            driver.switch_to.frame(iframe)
+            # Configure Chrome options for headless operation
+            chrome_options = webdriver.ChromeOptions()
+            chrome_options.add_argument("--headless")  # Run in background
+            chrome_options.add_argument("--no-sandbox")  # Required for some environments
+            chrome_options.add_argument("--disable-dev-shm-usage")  # Disable shared memory
+            chrome_options.add_argument("--disable-gpu")  # Disable GPU acceleration
+            chrome_options.add_argument("--window-size=1920,1080")  # Set window size
+            chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")  # Set user agent
+            chrome_options.add_argument("--disable-extensions")  # Disable extensions
+            chrome_options.add_argument("--disable-plugins")  # Disable plugins
+            chrome_options.add_argument("--disable-images")  # Disable images for faster loading
+            chrome_options.add_argument("--log-level=3")  # Minimize logging
+            chrome_options.add_experimental_option("excludeSwitches", ["enable-logging"])  # Disable logging
+            chrome_options.add_experimental_option('useAutomationExtension', False)  # Disable automation extension
             
-            # Input job description
-            job_description_textarea = wait.until(EC.presence_of_element_located((By.ID, "text_area_1")))
-            job_description_textarea.clear()
-            job_description_textarea.send_keys(job_description)
+            service = Service(chrome_driver_path)
+            driver = webdriver.Chrome(service=service, options=chrome_options)
             
-            # Upload resume
-            resume_input = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '[data-testid="stFileUploaderDropzoneInput"]')))
-            resume_input.send_keys(temp_file_path)
-            time.sleep(3)
-            
-            # Click percentage match button
-            percentage_match_btn = driver.find_elements(By.CSS_SELECTOR, ".st-emotion-cache-7ym5gk.ef3psqc12")[1]
-            percentage_match_btn.click()
-            
-            # Wait for analysis results
-            elements = wait.until(lambda d: len(d.find_elements(By.CSS_SELECTOR, ".st-emotion-cache-vdokb0.e1nzilvr4")) > 5)
-            analysis_div = driver.find_elements(By.CSS_SELECTOR, ".st-emotion-cache-vdokb0.e1nzilvr4")[4]
-            p_tags = analysis_div.find_elements(By.TAG_NAME, "p")
-            
-            # Extract feedback
-            feedback_list = []
-            for p in p_tags:
-                feedback_list.append(p.text)
-            
-            # Clean up temporary file
-            os.unlink(temp_file_path)
-            
-            return {
-                "success": True,
-                "feedback": feedback_list,
-                "resume_filename": resume_file.filename,
-                "job_description_preview": job_description[:100] + "..." if len(job_description) > 100 else job_description
-            }
-            
-        finally:
-            driver.quit()
+            try:
+                # Navigate to Hugging Face ATS screener
+                driver.get("https://huggingface.co/spaces/santu24/ATS-Resume-Screener")
+                
+                # Wait for iframe and switch to it
+                wait = WebDriverWait(driver, 15)
+                iframe = wait.until(EC.presence_of_element_located((By.ID, "iFrameResizer0")))
+                driver.switch_to.frame(iframe)
+                
+                # Input job description
+                job_description_textarea = wait.until(EC.presence_of_element_located((By.ID, "text_area_1")))
+                job_description_textarea.clear()
+                job_description_textarea.send_keys(job_description)
+                
+                # Upload resume
+                resume_input = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '[data-testid="stFileUploaderDropzoneInput"]')))
+                resume_input.send_keys(temp_file_path)
+                time.sleep(3)
+                
+                # Click percentage match button
+                percentage_match_btn = driver.find_elements(By.CSS_SELECTOR, ".st-emotion-cache-7ym5gk.ef3psqc12")[1]
+                percentage_match_btn.click()
+                
+                # Wait for analysis results
+                elements = wait.until(lambda d: len(d.find_elements(By.CSS_SELECTOR, ".st-emotion-cache-vdokb0.e1nzilvr4")) > 5)
+                analysis_div = driver.find_elements(By.CSS_SELECTOR, ".st-emotion-cache-vdokb0.e1nzilvr4")[4]
+                p_tags = analysis_div.find_elements(By.TAG_NAME, "p")
+                
+                # Extract feedback
+                feedback_list = []
+                for p in p_tags:
+                    feedback_list.append(p.text)
+                
+                return {
+                    "success": True,
+                    "feedback": feedback_list,
+                    "resume_filename": resume_file.filename,
+                    "job_description_preview": job_description[:100] + "..." if len(job_description) > 100 else job_description
+                }
+                
+            finally:
+                driver.quit()
+                
+        except Exception as web_error:
+            print(f"Web scraping failed: {str(web_error)}")
+            # Fallback to basic ATS analysis
+            return await perform_basic_ats_analysis(resume_file, job_description, temp_file_path)
             
     except Exception as e:
         # Clean up temporary file if it exists
@@ -287,6 +290,58 @@ async def evaluate_resume_ats(
                 pass
         
         raise HTTPException(status_code=500, detail=f"ATS evaluation failed: {str(e)}")
+
+async def perform_basic_ats_analysis(resume_file: UploadFile, job_description: str, temp_file_path: str) -> dict:
+    """Perform basic ATS analysis when web scraping fails"""
+    try:
+        # Read the resume content
+        with open(temp_file_path, 'rb') as f:
+            resume_content = f.read()
+        
+        # Parse the PDF to extract text
+        parse_result = resume_parser.extract_text_from_pdf(resume_content)
+        resume_text = str(parse_result.get('full_text', '')) if parse_result.get('parsed_successfully') else ''
+        
+        # Basic keyword matching
+        job_keywords = set(job_description.lower().split())  # type: ignore
+        resume_keywords = set(resume_text.lower().split())
+        
+        # Calculate basic match percentage
+        common_keywords = job_keywords.intersection(resume_keywords)
+        match_percentage = len(common_keywords) / len(job_keywords) * 100 if job_keywords else 0
+        
+        # Generate basic feedback
+        feedback = [
+            f"Basic ATS Analysis Results:",
+            f"Keyword Match: {len(common_keywords)} out of {len(job_keywords)} keywords found",
+            f"Match Percentage: {match_percentage:.1f}%",
+            "",
+            "Recommendations:",
+            "• Ensure your resume includes relevant keywords from the job description",
+            "• Use industry-standard terminology",
+            "• Include specific skills and technologies mentioned in the job posting",
+            "• Keep formatting simple and ATS-friendly",
+            "• Avoid graphics, tables, or complex layouts"
+        ]
+        
+        if common_keywords:
+            feedback.append(f"• Found keywords: {', '.join(list(common_keywords)[:10])}")
+        
+        return {
+            "success": True,
+            "feedback": feedback,
+            "resume_filename": resume_file.filename,
+            "job_description_preview": job_description[:100] + "..." if len(job_description) > 100 else job_description,
+            "match_percentage": round(match_percentage, 1),
+            "analysis_type": "basic"
+        }
+        
+    finally:
+        # Clean up temporary file
+        try:
+            os.unlink(temp_file_path)
+        except:
+            pass
 
 @router.get("/download")
 async def download_resume(

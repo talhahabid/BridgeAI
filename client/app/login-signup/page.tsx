@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Mail, Lock, User, MapPin, Briefcase, Globe, Upload, ArrowRight, Sparkles, CheckCircle, Star, Award } from 'lucide-react'
+import { Mail, Lock, User, MapPin, Briefcase, Globe, Upload, ArrowRight, Sparkles, CheckCircle, Star, Award, AlertCircle, X } from 'lucide-react'
 
 interface AuthForm {
   name: string
@@ -23,14 +23,34 @@ export default function Home() {
     origin_country: ''
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault()
+    }
+
     setIsLoading(true)
+    setError('')
+    setSuccess('')
+
+    // Basic validation
+    if (!formData.email || !formData.password) {
+      setError('Please fill in all required fields.')
+      setIsLoading(false)
+      return
+    }
+
+    if (!isLogin && (!formData.name || !formData.location || !formData.job_preference || !formData.origin_country)) {
+      setError('Please fill in all required fields.')
+      setIsLoading(false)
+      return
+    }
 
     try {
       const endpoint = isLogin ? '/api/auth/login' : '/api/auth/signup'
-      const data = isLogin 
+      const data = isLogin
         ? { email: formData.email, password: formData.password }
         : formData
 
@@ -43,14 +63,37 @@ export default function Home() {
       })
 
       const result = await response.json()
-      
+
+      if (!response.ok) {
+        // Handle different error statuses
+        if (response.status === 401) {
+          setError('Invalid email or password. Please try again.')
+        } else if (response.status === 409) {
+          setError('An account with this email already exists.')
+        } else if (response.status === 400) {
+          setError(result.message || 'Please check your input and try again.')
+        } else {
+          setError('Something went wrong. Please try again later.')
+        }
+        return
+      }
+
       if (result.access_token) {
+        setSuccess(isLogin ? 'Login successful! Redirecting...' : 'Account created successfully! Redirecting...')
+        // Store auth data
         localStorage.setItem('token', result.access_token)
         localStorage.setItem('userId', result.user_id)
-        window.location.href = '/dashboard'
+
+        // Redirect after a brief delay to show success message
+        setTimeout(() => {
+          window.location.href = '/dashboard'
+        }, 1500)
+      } else {
+        setError('Authentication failed. Please try again.')
       }
     } catch (error) {
       console.error('Error:', error)
+      setError('Network error. Please check your connection and try again.')
     } finally {
       setIsLoading(false)
     }
@@ -58,11 +101,23 @@ export default function Home() {
 
   const handleInputChange = (field: keyof AuthForm, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
+    // Clear error when user starts typing
+    if (error) setError('')
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !isLoading) {
+      handleSubmit()
+    }
+  }
+
+  const dismissMessage = () => {
+    setError('')
+    setSuccess('')
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-800 text-white overflow-x-hidden relative">
-      {/* Animated Background Elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute top-1/2 -left-40 w-80 h-80 bg-blue-400/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
@@ -71,7 +126,6 @@ export default function Home() {
 
       <div className="container mx-auto px-4 py-8 relative">
         <div className="max-w-6xl mx-auto">
-          {/* Header */}
           <div className="text-center mb-16">
             <div className="inline-flex items-center bg-gradient-to-r from-blue-600/20 to-blue-400/20 backdrop-blur-sm rounded-full px-6 py-3 mb-8 border border-blue-400/30">
               <Sparkles className="w-5 h-5 text-blue-400 mr-2 animate-pulse" />
@@ -88,31 +142,69 @@ export default function Home() {
           </div>
 
           <div className="grid lg:grid-cols-2 gap-12 items-start">
-            {/* Auth Form */}
             <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-8 border border-blue-400/20 shadow-2xl hover:border-blue-400/40 transition-all duration-500">
-              {/* Toggle Buttons */}
               <div className="flex mb-8 bg-slate-800/50 rounded-2xl p-1.5 backdrop-blur-sm">
                 <button
-                  onClick={() => setIsLogin(true)}
-                  className={`flex-1 py-3 px-6 rounded-xl font-semibold transition-all duration-300 ${
-                    isLogin 
-                      ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/25' 
+                  onClick={() => {
+                    setIsLogin(true)
+                    setError('')
+                    setSuccess('')
+                  }}
+                  className={`flex-1 py-3 px-6 rounded-xl font-semibold transition-all duration-300 ${isLogin
+                      ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/25'
                       : 'text-blue-200 hover:text-white hover:bg-white/5'
-                  }`}
+                    }`}
                 >
                   Login
                 </button>
                 <button
-                  onClick={() => setIsLogin(false)}
-                  className={`flex-1 py-3 px-6 rounded-xl font-semibold transition-all duration-300 ${
-                    !isLogin 
-                      ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/25' 
+                  onClick={() => {
+                    setIsLogin(false)
+                    setError('')
+                    setSuccess('')
+                  }}
+                  className={`flex-1 py-3 px-6 rounded-xl font-semibold transition-all duration-300 ${!isLogin
+                      ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/25'
                       : 'text-blue-200 hover:text-white hover:bg-white/5'
-                  }`}
+                    }`}
                 >
                   Sign Up
                 </button>
               </div>
+
+              {error && (
+                <div className="mb-6 p-4 bg-red-500/10 border border-red-400/30 rounded-xl backdrop-blur-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <AlertCircle className="w-5 h-5 text-red-400 mr-3 flex-shrink-0" />
+                      <p className="text-red-200 text-sm">{error}</p>
+                    </div>
+                    <button
+                      onClick={dismissMessage}
+                      className="text-red-400 hover:text-red-300 transition-colors duration-200 ml-2"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {success && (
+                <div className="mb-6 p-4 bg-green-500/10 border border-green-400/30 rounded-xl backdrop-blur-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <CheckCircle className="w-5 h-5 text-green-400 mr-3 flex-shrink-0" />
+                      <p className="text-green-200 text-sm">{success}</p>
+                    </div>
+                    <button
+                      onClick={dismissMessage}
+                      className="text-green-400 hover:text-green-300 transition-colors duration-200 ml-2"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 {!isLogin && (
@@ -126,9 +218,9 @@ export default function Home() {
                         type="text"
                         value={formData.name}
                         onChange={(e) => handleInputChange('name', e.target.value)}
+                        onKeyDown={handleKeyDown}
                         className="w-full pl-12 pr-4 py-4 bg-slate-800/50 border border-blue-400/30 rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:border-blue-400 focus:bg-slate-800/70 transition-all duration-300 backdrop-blur-sm"
                         placeholder="Enter your full name"
-                        required={!isLogin}
                       />
                     </div>
                   </div>
@@ -144,9 +236,9 @@ export default function Home() {
                       type="email"
                       value={formData.email}
                       onChange={(e) => handleInputChange('email', e.target.value)}
+                      onKeyDown={handleKeyDown}
                       className="w-full pl-12 pr-4 py-4 bg-slate-800/50 border border-blue-400/30 rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:border-blue-400 focus:bg-slate-800/70 transition-all duration-300 backdrop-blur-sm"
                       placeholder="Enter your email"
-                      required
                     />
                   </div>
                 </div>
@@ -161,10 +253,9 @@ export default function Home() {
                       type="password"
                       value={formData.password}
                       onChange={(e) => handleInputChange('password', e.target.value)}
+                      onKeyDown={handleKeyDown}
                       className="w-full pl-12 pr-4 py-4 bg-slate-800/50 border border-blue-400/30 rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:border-blue-400 focus:bg-slate-800/70 transition-all duration-300 backdrop-blur-sm"
                       placeholder="Enter your password"
-                      required
-                      minLength={8}
                     />
                   </div>
                 </div>
@@ -180,8 +271,8 @@ export default function Home() {
                         <select
                           value={formData.location}
                           onChange={(e) => handleInputChange('location', e.target.value)}
+                          onKeyDown={handleKeyDown}
                           className="w-full pl-12 pr-4 py-4 bg-slate-800/50 border border-blue-400/30 rounded-xl text-white focus:outline-none focus:border-blue-400 focus:bg-slate-800/70 transition-all duration-300 backdrop-blur-sm"
-                          required={!isLogin}
                         >
                           <option value="" className="bg-slate-800">Select a province</option>
                           <option value="ontario" className="bg-slate-800">Ontario</option>
@@ -211,9 +302,9 @@ export default function Home() {
                           type="text"
                           value={formData.job_preference}
                           onChange={(e) => handleInputChange('job_preference', e.target.value)}
+                          onKeyDown={handleKeyDown}
                           className="w-full pl-12 pr-4 py-4 bg-slate-800/50 border border-blue-400/30 rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:border-blue-400 focus:bg-slate-800/70 transition-all duration-300 backdrop-blur-sm"
                           placeholder="e.g., Software Engineer, Doctor, Teacher"
-                          required={!isLogin}
                         />
                       </div>
                     </div>
@@ -228,9 +319,9 @@ export default function Home() {
                           type="text"
                           value={formData.origin_country}
                           onChange={(e) => handleInputChange('origin_country', e.target.value)}
+                          onKeyDown={handleKeyDown}
                           className="w-full pl-12 pr-4 py-4 bg-slate-800/50 border border-blue-400/30 rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:border-blue-400 focus:bg-slate-800/70 transition-all duration-300 backdrop-blur-sm"
                           placeholder="e.g., India, China, Philippines"
-                          required={!isLogin}
                         />
                       </div>
                     </div>
@@ -255,7 +346,6 @@ export default function Home() {
               </form>
             </div>
 
-            {/* Features Section */}
             <div className="space-y-8">
               <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-8 border border-blue-400/20 shadow-2xl hover:border-blue-400/40 transition-all duration-500">
                 <div className="flex items-center mb-6">
@@ -266,7 +356,7 @@ export default function Home() {
                     Why Choose BridgeAI?
                   </h3>
                 </div>
-                
+
                 <div className="space-y-6">
                   <div className="flex items-start space-x-4 group">
                     <div className="w-10 h-10 bg-blue-600/20 rounded-full flex items-center justify-center flex-shrink-0 group-hover:bg-blue-600/30 transition-colors duration-300">
@@ -279,7 +369,7 @@ export default function Home() {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start space-x-4 group">
                     <div className="w-10 h-10 bg-blue-600/20 rounded-full flex items-center justify-center flex-shrink-0 group-hover:bg-blue-600/30 transition-colors duration-300">
                       <Briefcase className="w-5 h-5 text-blue-400" />
@@ -291,7 +381,7 @@ export default function Home() {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start space-x-4 group">
                     <div className="w-10 h-10 bg-blue-600/20 rounded-full flex items-center justify-center flex-shrink-0 group-hover:bg-blue-600/30 transition-colors duration-300">
                       <Award className="w-5 h-5 text-blue-400" />
@@ -303,7 +393,7 @@ export default function Home() {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start space-x-4 group">
                     <div className="w-10 h-10 bg-blue-600/20 rounded-full flex items-center justify-center flex-shrink-0 group-hover:bg-blue-600/30 transition-colors duration-300">
                       <CheckCircle className="w-5 h-5 text-blue-400" />
@@ -318,7 +408,6 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Success Stats */}
               <div className="bg-gradient-to-r from-blue-600/20 to-blue-400/20 backdrop-blur-xl rounded-3xl p-8 border border-blue-400/30 shadow-2xl">
                 <h3 className="text-xl font-bold text-white mb-6 text-center">
                   Join Thousands of Success Stories
