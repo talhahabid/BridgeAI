@@ -5,8 +5,11 @@ from typing import Optional
 
 class GroqService:
     def __init__(self):
-        # Groq API key for free AI document generation
-        self.api_key = "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"
+        # Get Groq API key from environment variable
+        self.api_key = os.getenv("GROQ_API_KEY")
+        if not self.api_key:
+            raise ValueError("GROQ_API_KEY environment variable is not set")
+        
         self.base_url = "https://api.groq.com/openai/v1/chat/completions"
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
