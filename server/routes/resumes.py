@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File, Request, Form
+from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File, Request, Form, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import FileResponse
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -482,16 +482,16 @@ async def create_latex_pdf(content: str, document_type: str, user_name: str) -> 
             temp_file.write(content)
             return temp_file.name
 
-@router.get("/download-generated/{file_path:path}")
-async def download_generated_document(
+@router.get("/preview-generated/{file_path:path}")
+async def preview_generated_document(
     file_path: str,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    token: str = Query(..., description="Authentication token"),
     request: Request = None
 ):
-    """Download a generated document"""
+    """Preview a generated document in iframe"""
     try:
-        # Verify user
-        user_id = get_current_user_id(credentials.credentials)
+        # Verify user using token from query parameter
+        user_id = get_current_user_id(token)
         
         # Check if the file exists
         if not os.path.exists(file_path):
@@ -510,6 +510,39 @@ async def download_generated_document(
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'GET',
                 'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error previewing document: {str(e)}")
+
+@router.get("/download-generated/{file_path:path}")
+async def download_generated_document(
+    file_path: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request = None
+):
+    """Download a generated document"""
+    try:
+        # Verify user
+        user_id = get_current_user_id(credentials.credentials)
+        
+        # Check if the file exists
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="Generated document not found")
+        
+        # Get filename from path
+        filename = os.path.basename(file_path)
+        
+        # Return the PDF file for download
+        return FileResponse(
+            path=file_path,
+            filename=filename,
+            media_type='application/pdf',
+            headers={
+                'Content-Disposition': f'attachment; filename="{filename}"'
             }
         )
         

@@ -223,10 +223,10 @@ export default function ResumePage() {
         }
       )
 
-      // Add preview URLs to the documents
+      // Add preview URLs to the documents with authentication
       const documentsWithPreview = response.data.files.map((doc: GeneratedDocument) => ({
         ...doc,
-        previewUrl: `${process.env.NEXT_PUBLIC_API_URL}/api/resumes/download-generated/${doc.path}`
+        previewUrl: `${process.env.NEXT_PUBLIC_API_URL}/api/resumes/preview-generated/${doc.path}`
       }))
 
       setGeneratedDocuments(documentsWithPreview)
@@ -268,8 +268,17 @@ export default function ResumePage() {
     }
   }
 
-  const showDocumentPreview = (previewUrl: string) => {
-    setPreviewDocument(previewUrl)
+  const showDocumentPreview = async (previewUrl: string) => {
+    try {
+      const token = localStorage.getItem('token')
+      
+      // Create authenticated URL for iframe
+      const authenticatedUrl = `${previewUrl}?token=${encodeURIComponent(token!)}`
+      setPreviewDocument(authenticatedUrl)
+    } catch (error) {
+      console.error('Preview error:', error)
+      toast.error('Failed to load preview')
+    }
   }
 
   const closePreview = () => {
