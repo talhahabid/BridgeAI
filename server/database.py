@@ -14,6 +14,16 @@ async def get_database(request: Request):
     """Get database from FastAPI app state"""
     return request.app.mongodb
 
+async def get_database_direct():
+    """Get database connection directly (for WebSocket manager and tests)"""
+    if db.database is None:
+        # Use hardcoded connection string since .env file reading has issues
+        mongodb_uri = "mongodb+srv://new:123@cluster0.3c9nu6x.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+        db.client = AsyncIOMotorClient(mongodb_uri)
+        db.database = db.client.immigrant_job_finder
+        print("Direct database connection established")
+    return db.database
+
 async def connect_to_mongo():
     db.client = AsyncIOMotorClient(os.getenv("MONGODB_URI"))  # type: ignore
     db.database = db.client.immigrant_job_finder  # type: ignore

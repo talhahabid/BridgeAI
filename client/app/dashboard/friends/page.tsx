@@ -13,8 +13,10 @@ import {
   MessageCircle,
   ArrowLeft,
   MapPin,
-  Globe
+  Globe,
+  Bell
 } from 'lucide-react'
+import { chatService, ChatSession } from '../../services/chatService'
 
 interface UserWithJobPreference {
   id: string
@@ -25,6 +27,9 @@ interface UserWithJobPreference {
   is_friend: boolean
   has_pending_request: boolean
   request_sent_by_me: boolean
+  unread_count?: number
+  last_message?: string
+  last_activity?: string
 }
 
 interface FriendRequest {
@@ -42,6 +47,8 @@ export default function FriendsPage() {
   const [discoverUsers, setDiscoverUsers] = useState<UserWithJobPreference[]>([])
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([])
   const [friends, setFriends] = useState<UserWithJobPreference[]>([])
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([])
+  const [totalUnreadCount, setTotalUnreadCount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
@@ -60,6 +67,9 @@ export default function FriendsPage() {
     try {
       const token = localStorage.getItem('token')
       
+      // Load chat data
+      await loadChatData()
+      
       if (activeTab === 'discover') {
         await loadDiscoverUsers(token!)
       } else if (activeTab === 'requests') {
@@ -77,6 +87,21 @@ export default function FriendsPage() {
       }
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const loadChatData = async () => {
+    try {
+      // Load chat sessions and unread count
+      const [sessionsResponse, unreadResponse] = await Promise.all([
+        chatService.getChatSessions(),
+        chatService.getUnreadCount()
+      ])
+      
+      setChatSessions(sessionsResponse.sessions)
+      setTotalUnreadCount(unreadResponse.unread_count)
+    } catch (error) {
+      console.error('Error loading chat data:', error)
     }
   }
 
@@ -101,7 +126,22 @@ export default function FriendsPage() {
     const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/friends/friends`, {
       headers: { Authorization: `Bearer ${token}` }
     })
-    setFriends(response.data)
+    
+    // Enhance friends with chat data
+    const friendsWithChat = response.data.map((friend: UserWithJobPreference) => {
+      const chatSession = chatSessions.find(session => 
+        session.participants.includes(friend.id)
+      )
+      
+      return {
+        ...friend,
+        unread_count: chatSession?.unread_count || 0,
+        last_message: chatSession?.last_message?.content || '',
+        last_activity: chatSession?.last_activity || ''
+      }
+    })
+    
+    setFriends(friendsWithChat)
   }
 
   const sendFriendRequest = async (userId: string) => {
@@ -156,6 +196,19 @@ export default function FriendsPage() {
     router.push(`/dashboard/friends/chat/${friendId}?name=${encodeURIComponent(friendName)}`)
   }
 
+  const formatLastActivity = (dateString: string) => {
+    if (!dateString) return ''
+    
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60)
+    
+    if (diffInHours < 1) return 'Just now'
+    if (diffInHours < 24) return `${Math.floor(diffInHours)}h ago`
+    if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d ago`
+    return date.toLocaleDateString()
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
@@ -181,6 +234,12 @@ export default function FriendsPage() {
             </div>
             <div className="flex items-center space-x-4">
               <h1 className="text-2xl font-bold text-white">Connect with People</h1>
+              {totalUnreadCount > 0 && (
+                <div className="flex items-center space-x-2 bg-red-500/20 px-3 py-1 rounded-full border border-red-500/30">
+                  <Bell className="w-4 h-4 text-red-400" />
+                  <span className="text-red-400 text-sm font-medium">{totalUnreadCount} unread</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -363,12 +422,19 @@ export default function FriendsPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {friends.map((friend) => (
-                  <div key={friend.id} className="bg-white rounded-lg shadow p-6">
+                  <div key={friend.id} className="bg-white rounded-lg shadow p-6 relative">
+                    {/* Unread badge */}
+                    {friend.unread_count && friend.unread_count > 0 && (
+                      <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                        {friend.unread_count > 99 ? '99+' : friend.unread_count}
+                      </div>
+                    )}
+                    
                     <div className="flex items-center mb-4">
                       <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
                         <User className="w-6 h-6 text-green-600" />
                       </div>
-                      <div className="ml-4">
+                      <div className="ml-4 flex-1">
                         <h3 className="text-lg font-semibold text-gray-900">{friend.name}</h3>
                         <p className="text-sm text-gray-600">{friend.job_preference}</p>
                       </div>
@@ -387,12 +453,33 @@ export default function FriendsPage() {
                       )}
                     </div>
 
+                    {/* Chat preview */}
+                    {(friend.last_message || friend.last_activity) && (
+                      <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                        {friend.last_message && (
+                          <p className="text-sm text-gray-700 mb-1 truncate">
+                            {friend.last_message}
+                          </p>
+                        )}
+                        {friend.last_activity && (
+                          <p className="text-xs text-gray-500">
+                            {formatLastActivity(friend.last_activity)}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     <button
                       onClick={() => openChat(friend.id, friend.name)}
                       className="w-full bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700 flex items-center justify-center space-x-2"
                     >
                       <MessageCircle className="w-4 h-4" />
-                      <span>Start Chat</span>
+                      <span>
+                        {friend.unread_count && friend.unread_count > 0 
+                          ? `Chat (${friend.unread_count})` 
+                          : 'Start Chat'
+                        }
+                      </span>
                     </button>
                   </div>
                 ))}

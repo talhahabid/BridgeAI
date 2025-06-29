@@ -7,19 +7,24 @@ class GroqService:
     def __init__(self):
         # Get Groq API key from environment variable
         self.api_key = os.getenv("GROQ_API_KEY")
-        if not self.api_key:
-            raise ValueError("GROQ_API_KEY environment variable is not set")
+        self.available = bool(self.api_key)
         
-        self.base_url = "https://api.groq.com/openai/v1/chat/completions"
-        self.headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
+        if self.available:
+            self.base_url = "https://api.groq.com/openai/v1/chat/completions"
+            self.headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+        else:
+            print("Warning: GROQ_API_KEY not set. Groq service will not be available.")
     
     async def generate_text(self, prompt: str, max_length: int = 2048) -> str:
         """
         Generate text using Groq API
         """
+        if not self.available:
+            return "Groq service is not available. Please set GROQ_API_KEY environment variable."
+        
         try:
             payload = {
                 "model": "llama3-8b-8192",  # Fast and free model
@@ -58,6 +63,9 @@ class GroqService:
         """
         Generate a tailored cover letter
         """
+        if not self.available:
+            return "Groq service is not available. Please set GROQ_API_KEY environment variable."
+        
         prompt = f"""
 You are an expert Canadian resume writer specializing in creating compelling cover letters for immigrants and newcomers to Canada.
 
@@ -97,6 +105,9 @@ Make it compelling and tailored specifically to this job and candidate. Keep it 
         """
         Generate an optimized resume
         """
+        if not self.available:
+            return "Groq service is not available. Please set GROQ_API_KEY environment variable."
+        
         prompt = f"""
 You are an expert Canadian resume writer specializing in optimizing resumes for the Canadian job market, particularly for immigrants and newcomers.
 
@@ -134,4 +145,8 @@ Make it compelling and specifically tailored to this job while maintaining the c
         return await self.generate_text(prompt, max_length=2000)
 
 # Create a global instance
-groq_service = GroqService() 
+try:
+    groq_service = GroqService()
+except Exception as e:
+    print(f"Warning: Could not initialize Groq service: {e}")
+    groq_service = None 

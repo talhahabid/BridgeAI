@@ -26,6 +26,15 @@ from models.user import UserResponse
 router = APIRouter()
 security = HTTPBearer()
 
+# Check if Groq service is available
+def get_groq_service():
+    if groq_service is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI document generation service is not available. Please set GROQ_API_KEY environment variable."
+        )
+    return groq_service
+
 @router.post("/upload")
 async def upload_resume(
     request: Request,
@@ -413,7 +422,7 @@ async def generate_cover_letter(user_info: Dict[str, Any], job_description: str)
     """Generate a tailored cover letter using Groq AI"""
     
     try:
-        response = await groq_service.generate_cover_letter(user_info, job_description)
+        response = await get_groq_service().generate_cover_letter(user_info, job_description)
         return response
     except Exception as e:
         print(f"Error generating cover letter: {str(e)}")
@@ -437,7 +446,7 @@ async def generate_optimized_resume(user_info: Dict[str, Any], job_description: 
     """Generate an optimized resume using Groq AI"""
     
     try:
-        response = await groq_service.generate_optimized_resume(user_info, job_description)
+        response = await get_groq_service().generate_optimized_resume(user_info, job_description)
         return response
     except Exception as e:
         print(f"Error generating optimized resume: {str(e)}")

@@ -3,17 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import { toast } from 'react-hot-toast'
-import { ArrowLeft, Send, User } from 'lucide-react'
-
-interface ChatMessage {
-  id: string
-  sender_id: string
-  receiver_id: string
-  sender_name: string
-  content: string
-  created_at: string
-  is_read: boolean
-}
+import { ArrowLeft, Send, User, Trash2, MoreVertical } from 'lucide-react'
+import { chatService, ChatMessage } from '../../../../services/chatService'
 
 export default function ChatPage() {
   const router = useRouter()
@@ -25,6 +16,9 @@ export default function ChatPage() {
   const [newMessage, setNewMessage] = useState('')
   const [isConnected, setIsConnected] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [hasMoreMessages, setHasMoreMessages] = useState(true)
+  const [selectedMessage, setSelectedMessage] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -36,7 +30,9 @@ export default function ChatPage() {
       return
     }
 
+    loadChatHistory()
     connectWebSocket(userId)
+    markMessagesAsRead()
     
     return () => {
       if (wsRef.current) {
@@ -51,6 +47,57 @@ export default function ChatPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  const loadChatHistory = async () => {
+    try {
+      setIsLoading(true)
+      const response = await chatService.getChatMessages(friendId, 50, 0)
+      setMessages(response.messages)
+      setHasMoreMessages(response.has_more)
+    } catch (error) {
+      console.error('Error loading chat history:', error)
+      toast.error('Failed to load chat history')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const loadMoreMessages = async () => {
+    if (!hasMoreMessages || isLoading) return
+    
+    try {
+      const response = await chatService.getChatMessages(friendId, 20, messages.length)
+      setMessages(prev => [...response.messages, ...prev])
+      setHasMoreMessages(response.has_more)
+    } catch (error) {
+      console.error('Error loading more messages:', error)
+      toast.error('Failed to load more messages')
+    }
+  }
+
+  const markMessagesAsRead = async () => {
+    try {
+      await chatService.markMessagesAsRead(friendId)
+      // Update local messages to mark them as read
+      setMessages(prev => prev.map(msg => 
+        msg.sender_id === friendId ? { ...msg, is_read: true } : msg
+      ))
+    } catch (error) {
+      console.error('Error marking messages as read:', error)
+    }
+  }
+
+  const deleteMessage = async (messageId: string) => {
+    try {
+      await chatService.deleteMessage(messageId)
+      setMessages(prev => prev.filter(msg => msg.id !== messageId))
+      setSelectedMessage(null)
+      toast.success('Message deleted')
+    } catch (error) {
+      console.error('Error deleting message:', error)
+      toast.error('Failed to delete message')
+    }
+  }
 
   const connectWebSocket = (userId: string) => {
     // Get authentication token
@@ -113,20 +160,33 @@ export default function ChatPage() {
       case 'chat_message':
         // Only add message if it's from the current friend or to the current friend
         if (data.sender_id === friendId || data.receiver_id === friendId) {
-          setMessages(prev => [...prev, {
+          const newMessage: ChatMessage = {
             id: data.id,
             sender_id: data.sender_id,
             receiver_id: data.receiver_id,
-            sender_name: data.sender_id === friendId ? friendName : 'You',
+            sender_name: data.sender_name,
             content: data.content,
+            message_type: data.message_type || 'text',
             created_at: data.created_at,
             is_read: data.is_read
-          }])
+          }
+          
+          setMessages(prev => [...prev, newMessage])
+          
+          // Mark as read if from friend
+          if (data.sender_id === friendId) {
+            markMessagesAsRead()
+          }
         }
         break
       case 'typing_indicator':
         if (data.sender_id === friendId) {
           setIsTyping(data.is_typing)
+        }
+        break
+      case 'message_deleted':
+        if (data.message_id) {
+          setMessages(prev => prev.filter(msg => msg.id !== data.message_id))
         }
         break
     }
@@ -138,7 +198,8 @@ export default function ChatPage() {
     const messageData = {
       type: 'chat_message',
       receiver_id: friendId,
-      content: newMessage.trim()
+      content: newMessage.trim(),
+      message_type: 'text'
     }
     
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -178,6 +239,15 @@ export default function ChatPage() {
     }
   }
 
+  const formatMessageTime = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+
+  const isOwnMessage = (message: ChatMessage) => {
+    return message.sender_id === localStorage.getItem('userId')
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
@@ -205,42 +275,104 @@ export default function ChatPage() {
 
       {/* Chat messages */}
       <div className="flex-1 overflow-y-auto max-w-2xl mx-auto w-full px-4 py-8">
-        <div className="space-y-4">
-          {messages.length === 0 ? (
-            <div className="text-center text-gray-400">No messages yet. Say hi!</div>
-          ) : (
-            messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex ${msg.sender_id === friendId ? 'justify-start' : 'justify-end'}`}
-              >
-                <div
-                  className={`rounded-lg px-4 py-2 max-w-xs break-words shadow text-sm ${
-                    msg.sender_id === friendId
-                      ? 'bg-white text-gray-900 border border-gray-200'
-                      : 'bg-indigo-600 text-white'
-                  }`}
+        {isLoading ? (
+          <div className="flex justify-center items-center h-32">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Load more messages button */}
+            {hasMoreMessages && (
+              <div className="flex justify-center">
+                <button
+                  onClick={loadMoreMessages}
+                  className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
                 >
-                  <div className="mb-1 font-medium">
-                    {msg.sender_id === friendId ? friendName : 'You'}
+                  Load more messages
+                </button>
+              </div>
+            )}
+            
+            {messages.length === 0 ? (
+              <div className="text-center text-gray-400 py-8">
+                <div className="text-lg font-medium mb-2">No messages yet</div>
+                <div className="text-sm">Start a conversation with {friendName}!</div>
+              </div>
+            ) : (
+              messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex ${isOwnMessage(msg) ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div className="relative group">
+                    <div
+                      className={`rounded-lg px-4 py-2 max-w-xs break-words shadow text-sm ${
+                        isOwnMessage(msg)
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-white text-gray-900 border border-gray-200'
+                      }`}
+                    >
+                      <div className="mb-1 font-medium">
+                        {isOwnMessage(msg) ? 'You' : friendName}
+                      </div>
+                      <div>{msg.content}</div>
+                      <div className={`text-xs mt-1 flex items-center justify-between ${
+                        isOwnMessage(msg) ? 'text-indigo-200' : 'text-gray-400'
+                      }`}>
+                        <span>{formatMessageTime(msg.created_at)}</span>
+                        {isOwnMessage(msg) && (
+                          <span className="ml-2">
+                            {msg.is_read ? '✓✓' : '✓'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Message actions (delete) */}
+                    {isOwnMessage(msg) && (
+                      <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => setSelectedMessage(selectedMessage === msg.id ? null : msg.id)}
+                          className="bg-gray-800 text-white p-1 rounded-full hover:bg-gray-700"
+                        >
+                          <MoreVertical className="w-3 h-3" />
+                        </button>
+                        
+                        {selectedMessage === msg.id && (
+                          <div className="absolute right-0 top-6 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-10">
+                            <button
+                              onClick={() => deleteMessage(msg.id)}
+                              className="flex items-center space-x-2 px-3 py-1 text-red-600 hover:bg-red-50 w-full text-left text-sm"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              <span>Delete</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div>{msg.content}</div>
-                  <div className="text-xs text-gray-400 mt-1 text-right">
-                    {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
+              ))
+            )}
+            
+            {isTyping && (
+              <div className="flex justify-start">
+                <div className="bg-gray-100 rounded-lg px-4 py-2 text-sm text-gray-600">
+                  <div className="flex items-center space-x-1">
+                    <span>{friendName} is typing</span>
+                    <div className="flex space-x-1">
+                      <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></div>
+                      <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                      <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    </div>
                   </div>
                 </div>
               </div>
-            ))
-          )}
-          {isTyping && (
-            <div className="flex justify-start">
-              <div className="bg-gray-100 rounded-lg px-4 py-2 text-sm text-gray-600">
-                {friendName} is typing...
-              </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
       </div>
 
       {/* Message input */}

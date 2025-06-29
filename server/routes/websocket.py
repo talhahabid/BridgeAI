@@ -1,9 +1,12 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, Request
 import json
 from datetime import datetime
 
 from websocket_manager import manager
 from utils.auth import verify_token
+from utils.chat_service import ChatService
+from models.chat import Message
+from database import get_database
 
 router = APIRouter()
 
@@ -11,7 +14,8 @@ router = APIRouter()
 async def websocket_endpoint(
     websocket: WebSocket, 
     user_id: str,
-    token: str = Query(...)
+    token: str = Query(...),
+    request: Request = None
 ):
     # Verify the token
     verified_user_id = verify_token(token)
@@ -28,42 +32,17 @@ async def websocket_endpoint(
             
             # Handle different message types
             if message_data.get("type") == "chat_message":
-                await handle_chat_message(message_data, user_id)
+                await manager.handle_chat_message(message_data, user_id)
             elif message_data.get("type") == "typing":
                 await handle_typing_indicator(message_data, user_id)
+            elif message_data.get("type") == "mark_read":
+                await manager.handle_mark_read(message_data, user_id)
                 
     except WebSocketDisconnect:
         manager.disconnect(user_id)
     except Exception as e:
         print(f"WebSocket error: {e}")
         manager.disconnect(user_id)
-
-async def handle_chat_message(message_data: dict, sender_id: str):
-    """Handle incoming chat messages"""
-    try:
-        receiver_id = message_data.get("receiver_id")
-        content = message_data.get("content")
-        
-        if not receiver_id or not content:
-            return
-        
-        # Prepare message for WebSocket
-        ws_message = {
-            "type": "chat_message",
-            "id": f"msg_{datetime.utcnow().timestamp()}",
-            "sender_id": sender_id,
-            "receiver_id": receiver_id,
-            "sender_name": "You",  # We'll get this from frontend
-            "content": content,
-            "created_at": datetime.utcnow().isoformat(),
-            "is_read": False
-        }
-        
-        # Send to both users
-        await manager.send_chat_message(ws_message, sender_id, receiver_id)
-        
-    except Exception as e:
-        print(f"Error handling chat message: {e}")
 
 async def handle_typing_indicator(message_data: dict, sender_id: str):
     """Handle typing indicators"""

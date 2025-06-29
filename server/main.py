@@ -5,7 +5,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 import os
 
-from routes import auth, users, resumes, jobs, qualifications, friends, websocket
+from routes import auth, users, resumes, jobs, qualifications, friends, websocket, chat
 from database import get_database
 
 load_dotenv()
@@ -63,6 +63,7 @@ app.include_router(jobs.router, prefix="/api/jobs", tags=["Jobs"])
 app.include_router(qualifications.router, prefix="/api/qualifications", tags=["Qualifications"])
 app.include_router(friends.router, prefix="/api/friends", tags=["Friends"])
 app.include_router(websocket.router, tags=["WebSocket"])
+app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 
 @app.get("/")
 async def root():
