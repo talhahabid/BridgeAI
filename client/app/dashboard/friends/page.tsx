@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import axios from 'axios'
-import { 
-  User, 
-  Users, 
-  UserPlus, 
-  UserCheck, 
+import {
+  User,
+  Users,
+  UserPlus,
+  UserCheck,
   UserX,
   MessageCircle,
   ArrowLeft,
@@ -152,7 +152,7 @@ export default function FriendsPage() {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      
+
       toast.success('Friend request sent!')
       loadData() // Reload to update UI
     } catch (error: any) {
@@ -167,7 +167,7 @@ export default function FriendsPage() {
       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/friends/request/${requestId}/accept`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      
+
       toast.success('Friend request accepted!')
       loadData() // Reload to update UI
     } catch (error: any) {
@@ -183,7 +183,7 @@ export default function FriendsPage() {
       await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/friends/request/${requestId}/reject`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      
+
       toast.success('Friend request rejected')
       loadData() // Reload to update UI
     } catch (error: any) {
@@ -212,7 +212,10 @@ export default function FriendsPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-blue-400/20 border-t-blue-400 rounded-full animate-spin"></div>
+          <div className="absolute inset-0 w-16 h-16 border-4 border-purple-400/20 border-b-purple-400 rounded-full animate-spin animate-reverse"></div>
+        </div>
       </div>
     )
   }
@@ -220,65 +223,80 @@ export default function FriendsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Header */}
-      <header className="bg-white/5 shadow-sm border-b border-slate-700/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
+      <header className="bg-slate-900/50 backdrop-blur-xl border-b border-slate-700/50 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
+          <div className="flex justify-between items-center py-6">
+            <div className="flex items-center space-x-6">
               <button
                 onClick={() => router.push('/dashboard')}
-                className="flex items-center space-x-2 text-slate-200 hover:text-white"
+                className="flex items-center space-x-3 text-slate-300 hover:text-white transition-all duration-200 group"
               >
-                <ArrowLeft className="w-4 h-4" />
-                <span>Back to Dashboard</span>
+                <div className="p-2 bg-slate-800/50 rounded-xl border border-slate-700/50 group-hover:border-blue-500/30 group-hover:bg-slate-700/50 transition-all">
+                  <ArrowLeft className="w-4 h-4" />
+                </div>
+                <span className="font-medium">Back to Dashboard</span>
               </button>
             </div>
             <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold text-white">Connect with People</h1>
-              {totalUnreadCount > 0 && (
-                <div className="flex items-center space-x-2 bg-red-500/20 px-3 py-1 rounded-full border border-red-500/30">
-                  <Bell className="w-4 h-4 text-red-400" />
-                  <span className="text-red-400 text-sm font-medium">{totalUnreadCount} unread</span>
-                </div>
-              )}
+              <div className="text-center">
+                <h1 className="text-2xl font-bold text-white">Network & Connect</h1>
+                <p className="text-slate-400 text-sm">Build your professional network</p>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-8">
         {/* Tabs */}
         <div className="mb-8">
-          <div className="border-b border-slate-700/50">
-            <nav className="-mb-px flex space-x-8">
+          <div className="bg-slate-800/30 backdrop-blur-xl rounded-2xl p-2 border border-slate-700/50">
+            <nav className="flex space-x-2">
               <button
                 onClick={() => setActiveTab('discover')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'discover'
-                    ? 'border-indigo-400 text-indigo-300'
-                    : 'border-transparent text-slate-400 hover:text-white hover:border-slate-500'
-                }`}
+                className={`flex-1 py-3 px-6 rounded-xl font-medium text-sm transition-all duration-200 ${activeTab === 'discover'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-700/30'
+                  }`}
               >
-                Discover
+                <div className="flex items-center justify-center space-x-2">
+                  <Users className="w-4 h-4" />
+                  <span>Discover</span>
+                </div>
               </button>
               <button
                 onClick={() => setActiveTab('requests')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'requests'
-                    ? 'border-indigo-400 text-indigo-300'
-                    : 'border-transparent text-slate-400 hover:text-white hover:border-slate-500'
-                }`}
+                className={`flex-1 py-3 px-6 rounded-xl font-medium text-sm transition-all duration-200 relative ${activeTab === 'requests'
+                    ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-700/30'
+                  }`}
               >
-                Requests
+                <div className="flex items-center justify-center space-x-2">
+                  <UserPlus className="w-4 h-4" />
+                  <span>Requests</span>
+                  {friendRequests.length > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                      {friendRequests.length}
+                    </span>
+                  )}
+                </div>
               </button>
               <button
                 onClick={() => setActiveTab('friends')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'friends'
-                    ? 'border-indigo-400 text-indigo-300'
-                    : 'border-transparent text-slate-400 hover:text-white hover:border-slate-500'
-                }`}
+                className={`flex-1 py-3 px-6 rounded-xl font-medium text-sm transition-all duration-200 ${activeTab === 'friends'
+                    ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-700/30'
+                  }`}
               >
-                Friends
+                <div className="flex items-center justify-center space-x-2">
+                  <UserCheck className="w-4 h-4" />
+                  <span>Friends</span>
+                  {friends.length > 0 && (
+                    <span className="ml-2 px-2 py-1 bg-white/20 text-xs rounded-full">
+                      {friends.length}
+                    </span>
+                  )}
+                </div>
               </button>
             </nav>
           </div>
@@ -287,66 +305,80 @@ export default function FriendsPage() {
         {/* Content */}
         {activeTab === 'discover' && (
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              People with the same job preference as you
-            </h2>
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-white mb-2">
+                Discover Professionals
+              </h2>
+              <p className="text-slate-400">Connect with people who share your career interests</p>
+            </div>
             {discoverUsers.length === 0 ? (
-              <div className="text-center py-12">
-                <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">No users found with the same job preference</p>
-                <p className="text-sm text-gray-400 mt-2">Make sure you've set your job preference in your profile</p>
+              <div className="text-center py-16">
+                <div className="bg-slate-800/30 backdrop-blur-xl rounded-2xl p-12 border border-slate-700/50 max-w-md mx-auto">
+                  <div className="w-16 h-16 bg-gradient-to-r from-blue-500/20 to-purple-600/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                    <Users className="w-8 h-8 text-blue-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-white mb-2">No matches found</h3>
+                  <p className="text-slate-400 mb-2">We couldn't find anyone with your job preference yet</p>
+                  <p className="text-sm text-slate-500">Make sure you've set your job preference in your profile</p>
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {discoverUsers.map((user) => (
-                  <div key={user.id} className="bg-white rounded-lg shadow p-6">
-                    <div className="flex items-center mb-4">
-                      <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
-                        <User className="w-6 h-6 text-indigo-600" />
+                  <div key={user.id} className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 hover:border-blue-500/30 transition-all duration-200 group">
+                    <div className="flex items-center mb-6">
+                      <div className="w-14 h-14 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center">
+                        <span className="text-white font-bold text-lg">{user.name.charAt(0)}</span>
                       </div>
-                      <div className="ml-4">
-                        <h3 className="text-lg font-semibold text-gray-900">{user.name}</h3>
-                        <p className="text-sm text-gray-600">{user.job_preference}</p>
+                      <div className="ml-4 flex-1">
+                        <h3 className="text-lg font-semibold text-white mb-1">{user.name}</h3>
+                        <p className="text-sm text-slate-400 bg-slate-700/50 px-3 py-1 rounded-full inline-block">
+                          {user.job_preference}
+                        </p>
                       </div>
                     </div>
-                    
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center text-sm text-gray-600">
-                        <MapPin className="w-4 h-4 mr-2" />
+
+                    <div className="space-y-3 mb-6">
+                      <div className="flex items-center text-sm text-slate-300">
+                        <div className="p-2 bg-slate-700/50 rounded-lg mr-3">
+                          <MapPin className="w-4 h-4 text-blue-400" />
+                        </div>
                         <span>{user.location}</span>
                       </div>
                       {user.origin_country && (
-                        <div className="flex items-center text-sm text-gray-600">
-                          <Globe className="w-4 h-4 mr-2" />
+                        <div className="flex items-center text-sm text-slate-300">
+                          <div className="p-2 bg-slate-700/50 rounded-lg mr-3">
+                            <Globe className="w-4 h-4 text-purple-400" />
+                          </div>
                           <span>{user.origin_country}</span>
                         </div>
                       )}
                     </div>
 
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-3">
                       {user.is_friend ? (
                         <button
                           onClick={() => openChat(user.id, user.name)}
-                          className="flex-1 bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700 flex items-center justify-center space-x-2"
+                          className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-3 rounded-xl text-sm font-medium hover:from-green-600 hover:to-emerald-700 transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg"
                         >
                           <MessageCircle className="w-4 h-4" />
                           <span>Message</span>
                         </button>
                       ) : user.has_pending_request ? (
-                        <button className="flex-1 bg-gray-300 text-gray-600 px-4 py-2 rounded-md text-sm font-medium cursor-not-allowed">
+                        <button className="flex-1 bg-slate-700/50 text-slate-400 px-4 py-3 rounded-xl text-sm font-medium cursor-not-allowed border border-slate-600/50">
                           Request Pending
                         </button>
                       ) : user.request_sent_by_me ? (
-                        <button className="flex-1 bg-gray-300 text-gray-600 px-4 py-2 rounded-md text-sm font-medium cursor-not-allowed">
+                        <button className="flex-1 bg-slate-700/50 text-slate-400 px-4 py-3 rounded-xl text-sm font-medium cursor-not-allowed border border-slate-600/50">
                           Request Sent
                         </button>
                       ) : (
                         <button
                           onClick={() => sendFriendRequest(user.id)}
-                          className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 flex items-center justify-center space-x-2"
+                          className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-3 rounded-xl text-sm font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg"
                         >
                           <UserPlus className="w-4 h-4" />
-                          <span>Add Friend</span>
+                          <span>Connect</span>
                         </button>
                       )}
                     </div>
@@ -359,45 +391,60 @@ export default function FriendsPage() {
 
         {activeTab === 'requests' && (
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Pending Friend Requests
-            </h2>
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-white mb-2">
+                Friend Requests
+              </h2>
+              <p className="text-slate-400">Manage your incoming connection requests</p>
+            </div>
             {friendRequests.length === 0 ? (
-              <div className="text-center py-12">
-                <UserPlus className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">No pending friend requests</p>
+              <div className="text-center py-16">
+                <div className="bg-slate-800/30 backdrop-blur-xl rounded-2xl p-12 border border-slate-700/50 max-w-md mx-auto">
+                  <div className="w-16 h-16 bg-gradient-to-r from-orange-500/20 to-red-600/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                    <UserPlus className="w-8 h-8 text-orange-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-white mb-2">No pending requests</h3>
+                  <p className="text-slate-400">You're all caught up! New requests will appear here.</p>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
                 {friendRequests.map((request) => (
-                  <div key={request.id} className="bg-white rounded-lg shadow p-6">
+                  <div key={request.id} className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 hover:border-orange-500/30 transition-all duration-200">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
-                          <User className="w-6 h-6 text-indigo-600" />
+                      <div className="flex items-center flex-1">
+                        <div className="w-14 h-14 bg-gradient-to-r from-orange-500 to-red-600 rounded-2xl flex items-center justify-center">
+                          <span className="text-white font-bold text-lg">{request.sender_name.charAt(0)}</span>
                         </div>
-                        <div className="ml-4">
-                          <h3 className="text-lg font-semibold text-gray-900">{request.sender_name}</h3>
-                          <p className="text-sm text-gray-600">Wants to connect with you</p>
-                          <p className="text-xs text-gray-400">
-                            {new Date(request.created_at).toLocaleDateString()}
-                          </p>
+                        <div className="ml-4 flex-1">
+                          <h3 className="text-lg font-semibold text-white mb-1">{request.sender_name}</h3>
+                          <p className="text-sm text-slate-400 mb-2">Wants to connect with you</p>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-orange-400 rounded-full"></div>
+                            <p className="text-xs text-slate-500">
+                              {new Date(request.created_at).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex space-x-2">
+                      <div className="flex space-x-3 ml-4">
                         <button
                           onClick={() => acceptFriendRequest(request.id)}
-                          className="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700 flex items-center space-x-2"
+                          className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl text-sm font-medium hover:from-green-600 hover:to-emerald-700 transition-all duration-200 flex items-center space-x-2 shadow-lg"
                         >
                           <UserCheck className="w-4 h-4" />
                           <span>Accept</span>
                         </button>
                         <button
                           onClick={() => rejectFriendRequest(request.id)}
-                          className="bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700 flex items-center space-x-2"
+                          className="bg-slate-700/50 text-slate-300 hover:bg-red-600/20 hover:text-red-400 hover:border-red-500/30 px-6 py-3 rounded-xl text-sm font-medium transition-all duration-200 flex items-center space-x-2 border border-slate-600/50"
                         >
                           <UserX className="w-4 h-4" />
-                          <span>Reject</span>
+                          <span>Decline</span>
                         </button>
                       </div>
                     </div>
@@ -410,44 +457,56 @@ export default function FriendsPage() {
 
         {activeTab === 'friends' && (
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              My Friends
-            </h2>
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-white mb-2">
+                My Network
+              </h2>
+              <p className="text-slate-400">Your professional connections and friends</p>
+            </div>
             {friends.length === 0 ? (
-              <div className="text-center py-12">
-                <UserCheck className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">You don't have any friends yet</p>
-                <p className="text-sm text-gray-400 mt-2">Start by discovering people with similar interests</p>
+              <div className="text-center py-16">
+                <div className="bg-slate-800/30 backdrop-blur-xl rounded-2xl p-12 border border-slate-700/50 max-w-md mx-auto">
+                  <div className="w-16 h-16 bg-gradient-to-r from-green-500/20 to-emerald-600/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                    <UserCheck className="w-8 h-8 text-green-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-white mb-2">No connections yet</h3>
+                  <p className="text-slate-400 mb-4">Start building your network by discovering people with similar interests</p>
+                  <button
+                    onClick={() => setActiveTab('discover')}
+                    className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-xl font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-200"
+                  >
+                    Discover People
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {friends.map((friend) => (
-                  <div key={friend.id} className="bg-white rounded-lg shadow p-6 relative">
-                    {/* Unread badge */}
-                    {friend.unread_count && friend.unread_count > 0 && (
-                      <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
-                        {friend.unread_count > 99 ? '99+' : friend.unread_count}
-                      </div>
-                    )}
-                    
-                    <div className="flex items-center mb-4">
-                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                        <User className="w-6 h-6 text-green-600" />
+                  <div key={friend.id} className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 hover:border-green-500/30 transition-all duration-200 group">
+                    <div className="flex items-center mb-6">
+                      <div className="w-14 h-14 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center">
+                        <span className="text-white font-bold text-lg">{friend.name.charAt(0)}</span>
                       </div>
                       <div className="ml-4 flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900">{friend.name}</h3>
-                        <p className="text-sm text-gray-600">{friend.job_preference}</p>
+                        <h3 className="text-lg font-semibold text-white mb-1">{friend.name}</h3>
+                        <p className="text-sm text-slate-400 bg-slate-700/50 px-3 py-1 rounded-full inline-block">
+                          {friend.job_preference}
+                        </p>
                       </div>
                     </div>
-                    
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center text-sm text-gray-600">
-                        <MapPin className="w-4 h-4 mr-2" />
+
+                    <div className="space-y-3 mb-6">
+                      <div className="flex items-center text-sm text-slate-300">
+                        <div className="p-2 bg-slate-700/50 rounded-lg mr-3">
+                          <MapPin className="w-4 h-4 text-green-400" />
+                        </div>
                         <span>{friend.location}</span>
                       </div>
                       {friend.origin_country && (
-                        <div className="flex items-center text-sm text-gray-600">
-                          <Globe className="w-4 h-4 mr-2" />
+                        <div className="flex items-center text-sm text-slate-300">
+                          <div className="p-2 bg-slate-700/50 rounded-lg mr-3">
+                            <Globe className="w-4 h-4 text-emerald-400" />
+                          </div>
                           <span>{friend.origin_country}</span>
                         </div>
                       )}
@@ -471,7 +530,7 @@ export default function FriendsPage() {
 
                     <button
                       onClick={() => openChat(friend.id, friend.name)}
-                      className="w-full bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700 flex items-center justify-center space-x-2"
+                      className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-3 rounded-xl text-sm font-medium hover:from-green-600 hover:to-emerald-700 transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg"
                     >
                       <MessageCircle className="w-4 h-4" />
                       <span>
@@ -490,4 +549,4 @@ export default function FriendsPage() {
       </div>
     </div>
   )
-} 
+}
