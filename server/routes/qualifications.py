@@ -112,7 +112,7 @@ async def get_qualification_pathway(
     job_type: str,
     province: str = "ontario",
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    db = Depends(get_database)
 ):
     """Get qualification pathway for a specific job type and province."""
     try:
@@ -162,7 +162,7 @@ async def update_step_status(
     completed: bool,
     province: str = "ontario",
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    db = Depends(get_database)
 ):
     """Update the completion status of a pathway step."""
     try:
@@ -219,7 +219,7 @@ async def update_step_status(
 @router.get("/available-jobs")
 async def get_available_job_types(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    db = Depends(get_database)
 ):
     """Get list of available job types with qualification pathways."""
     try:
@@ -241,8 +241,8 @@ async def get_available_job_types(
 
 @router.post("/generate")
 async def generate_qualification_path(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    request: Request = None
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Generate a qualification path for the current user using Gemini AI."""
     try:
@@ -488,8 +488,8 @@ def generate_fallback_qualification_path(user_data: Dict[str, Any]) -> Dict[str,
 
 @router.get("/path")
 async def get_qualification_path(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    request: Request = None
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Get the current user's qualification path and progress."""
     try:
@@ -531,8 +531,8 @@ async def get_qualification_path(
 async def update_progress(
     step_number: int,
     completed: bool,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    request: Request = None
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Update the progress of a specific step in the qualification path."""
     try:
@@ -599,8 +599,8 @@ async def update_progress(
 
 @router.delete("/path")
 async def delete_qualification_path(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    request: Request = None
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Delete the current user's qualification path."""
     try:

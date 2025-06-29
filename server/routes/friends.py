@@ -8,7 +8,7 @@ from database import get_database
 from models.friends import (
     FriendRequest, FriendRequestCreate, FriendRequestResponse,
     ChatMessage, ChatMessageCreate, ChatMessageResponse,
-    UserWithJobPreference
+    UserWithJobPreference, PyObjectId
 )
 from utils.auth import get_current_user
 
@@ -17,7 +17,7 @@ router = APIRouter()
 @router.get("/discover", response_model=List[UserWithJobPreference])
 async def discover_users_with_same_job_preference(
     current_user: dict = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    db = Depends(get_database)
 ):
     """Discover users with the same job preference"""
     try:
@@ -93,7 +93,7 @@ async def discover_users_with_same_job_preference(
 async def send_friend_request(
     request_data: FriendRequestCreate,
     current_user: dict = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    db = Depends(get_database)
 ):
     """Send a friend request"""
     try:
@@ -118,8 +118,8 @@ async def send_friend_request(
         
         # Create friend request
         friend_request = FriendRequest(
-            sender_id=sender_id,
-            receiver_id=receiver_id
+            sender_id=PyObjectId(str(sender_id)),
+            receiver_id=PyObjectId(str(receiver_id))
         )
         
         result = await db.friend_requests.insert_one(friend_request.dict(by_alias=True))
@@ -143,7 +143,7 @@ async def send_friend_request(
 @router.get("/requests", response_model=List[FriendRequestResponse])
 async def get_friend_requests(
     current_user: dict = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    db = Depends(get_database)
 ):
     """Get pending friend requests"""
     try:
@@ -182,7 +182,7 @@ async def get_friend_requests(
 async def accept_friend_request(
     request_id: str,
     current_user: dict = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    db = Depends(get_database)
 ):
     """Accept a friend request"""
     print(f"Accepting friend request with ID: {request_id}")
@@ -218,7 +218,7 @@ async def accept_friend_request(
 async def reject_friend_request(
     request_id: str,
     current_user: dict = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    db = Depends(get_database)
 ):
     """Reject a friend request"""
     print(f"Rejecting friend request with ID: {request_id}")
@@ -253,7 +253,7 @@ async def reject_friend_request(
 @router.get("/friends", response_model=List[UserWithJobPreference])
 async def get_friends(
     current_user: dict = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    db = Depends(get_database)
 ):
     """Get user's friends list"""
     try:
@@ -300,7 +300,7 @@ async def get_friends(
 async def send_message(
     message_data: ChatMessageCreate,
     current_user: dict = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    db = Depends(get_database)
 ):
     """Send a chat message (only to friends)"""
     try:
@@ -320,8 +320,8 @@ async def send_message(
         
         # Create message
         message = ChatMessage(
-            sender_id=sender_id,
-            receiver_id=receiver_id,
+            sender_id=PyObjectId(str(sender_id)),
+            receiver_id=PyObjectId(str(receiver_id)),
             content=message_data.content
         )
         
@@ -331,7 +331,7 @@ async def send_message(
         sender = await db.users.find_one({"_id": sender_id})
         
         return ChatMessageResponse(
-            id=str(result.inserted_id),
+            _id=str(result.inserted_id),
             sender_id=str(sender_id),
             receiver_id=str(receiver_id),
             sender_name=sender["name"],
@@ -347,7 +347,7 @@ async def send_message(
 async def get_chat_messages(
     friend_id: str,
     current_user: dict = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_database)
+    db = Depends(get_database)
 ):
     """Get chat messages with a friend"""
     try:
@@ -389,7 +389,7 @@ async def get_chat_messages(
         for msg in messages:
             sender = await db.users.find_one({"_id": msg["sender_id"]})
             result.append(ChatMessageResponse(
-                id=str(msg["_id"]),
+                _id=str(msg["_id"]),
                 sender_id=str(msg["sender_id"]),
                 receiver_id=str(msg["receiver_id"]),
                 sender_name=sender["name"],

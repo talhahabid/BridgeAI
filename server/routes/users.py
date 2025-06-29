@@ -13,8 +13,8 @@ security = HTTPBearer()
 
 @router.get("/profile", response_model=UserResponse)
 async def get_profile(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    request: Request = None
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Get current user's profile."""
     try:
@@ -46,8 +46,8 @@ async def get_profile(
 @router.put("/profile")
 async def update_profile(
     user_data: UserUpdate,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    request: Request = None
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Update current user's profile."""
     try:
@@ -98,8 +98,8 @@ async def update_profile(
 
 @router.delete("/account")
 async def delete_account(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    request: Request = None
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Delete current user's account."""
     try:
@@ -129,8 +129,8 @@ async def delete_account(
 @router.get("/by-id/{user_id}", response_model=UserResponse)
 async def get_user_by_id(
     user_id: str,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    request: Request = None
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Get user profile by ID."""
     try:
@@ -170,8 +170,8 @@ async def get_user_by_id(
 async def update_user_by_id(
     user_id: str,
     user_data: UserUpdate,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    request: Request = None
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Update user profile by ID."""
     try:

@@ -5,7 +5,22 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import axios from 'axios'
 import { useDropzone } from 'react-dropzone'
-import { Upload, User, Briefcase, MapPin, Globe, Save, Eye, X } from 'lucide-react'
+import {
+  Upload,
+  User,
+  Briefcase,
+  MapPin,
+  Globe,
+  Save,
+  Eye,
+  X,
+  ArrowLeft,
+  FileText,
+  CheckCircle,
+  AlertCircle,
+  Sparkles,
+  Camera
+} from 'lucide-react'
 
 interface UserProfile {
   _id: string
@@ -44,16 +59,16 @@ export default function ProfilePage() {
     try {
       const token = localStorage.getItem('token')
       const userId = localStorage.getItem('userId')
-      
+
       if (!token || !userId) {
         router.push('/')
         return
       }
-      
+
       const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/users/by-id/${userId}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      
+
       // Ensure all string fields are properly converted
       const profileData = {
         ...response.data,
@@ -63,11 +78,11 @@ export default function ProfilePage() {
         origin_country: response.data.origin_country ? String(response.data.origin_country) : '',
         resume_text: response.data.resume_text ? String(response.data.resume_text) : '',
         resume_filename: response.data.resume_filename ? String(response.data.resume_filename) : '',
-        resume_keywords: Array.isArray(response.data.resume_keywords) 
+        resume_keywords: Array.isArray(response.data.resume_keywords)
           ? response.data.resume_keywords.map((k: any) => String(k))
           : []
       }
-      
+
       setProfile(profileData)
       setFormData({
         name: profileData.name,
@@ -99,12 +114,12 @@ export default function ProfilePage() {
     try {
       const token = localStorage.getItem('token')
       const userId = localStorage.getItem('userId')
-      
+
       if (!token || !userId) {
         router.push('/')
         return
       }
-      
+
       await axios.put(
         `${process.env.NEXT_PUBLIC_API_URL}/api/users/by-id/${userId}`,
         formData,
@@ -180,43 +195,116 @@ export default function ProfilePage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-blue-400/20 border-t-blue-400 rounded-full animate-spin"></div>
+          <div className="absolute inset-0 w-16 h-16 border-4 border-purple-400/20 border-b-purple-400 rounded-full animate-spin animate-reverse"></div>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="text-slate-200 hover:text-white mb-4 flex items-center"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to Dashboard
-          </button>
-          <h1 className="text-3xl font-bold text-gray-900">Profile Settings</h1>
-          <p className="text-gray-600 mt-2">
-            Update your personal information and resume
-          </p>
+      {/* Header */}
+      <div className="bg-slate-900/50 backdrop-blur-xl border-b border-slate-700/50 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-6">
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="flex items-center space-x-2 text-slate-400 hover:text-white transition-colors group"
+              >
+                <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+                <span>Back to Dashboard</span>
+              </button>
+              <div>
+                <h1 className="text-2xl font-bold text-white">Profile Settings</h1>
+                <p className="text-slate-400">Manage your personal information and resume</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                <span className="text-white font-semibold">
+                  {profile?.name?.charAt(0) || 'U'}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Profile Information */}
-          <div className="space-y-6">
-            <div className="card">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
-                <User className="w-5 h-5 mr-2" />
-                Personal Information
-              </h2>
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Profile Overview Card */}
+          <div className="lg:col-span-1">
+            <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 sticky top-24">
+              <div className="text-center mb-6">
+                <div className="relative inline-block">
+                  <div className="w-24 h-24 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mb-4">
+                    <span className="text-white font-bold text-3xl">
+                      {profile?.name?.charAt(0) || 'U'}
+                    </span>
+                  </div>
+                </div>
+                <h2 className="text-xl font-bold text-white mb-1">{profile?.name || 'User'}</h2>
+                <p className="text-slate-400 text-sm mb-2">{profile?.email}</p>
+                <div className="flex items-center justify-center space-x-4 text-sm text-slate-400">
+                  <div className="flex items-center space-x-1">
+                    <MapPin className="w-4 h-4" />
+                    <span>{profile?.location || 'Not specified'}</span>
+                  </div>
+                  {profile?.origin_country && (
+                    <div className="flex items-center space-x-1">
+                      <Globe className="w-4 h-4" />
+                      <span>{profile.origin_country}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               
-              <div className="space-y-4">
+
+              {/* Resume Status */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-slate-700/50 rounded-xl">
+                  <div className="flex items-center space-x-3">
+                    <FileText className="w-5 h-5 text-blue-400" />
+                    <span className="text-white text-sm">Resume</span>
+                  </div>
+                  {profile?.resume_text ? (
+                    <CheckCircle className="w-5 h-5 text-green-400" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5 text-orange-400" />
+                  )}
+                </div>
+                <div className="flex items-center justify-between p-3 bg-slate-700/50 rounded-xl">
+                  <div className="flex items-center space-x-3">
+                    <User className="w-5 h-5 text-purple-400" />
+                    <span className="text-white text-sm">Personal Info</span>
+                  </div>
+                  <CheckCircle className="w-5 h-5 text-green-400" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Personal Information */}
+            <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-8 border border-slate-700/50">
+              <div className="flex items-center space-x-3 mb-8">
+                <div className="p-3 bg-blue-500/20 rounded-xl">
+                  <User className="w-6 h-6 text-blue-400" />
+                </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <h2 className="text-xl font-bold text-white">Personal Information</h2>
+                  <p className="text-slate-400 text-sm">Update your basic profile details</p>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-3">
                     Full Name
                   </label>
                   <input
@@ -224,33 +312,33 @@ export default function ProfilePage() {
                     name="name"
                     value={formData.name}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
                     placeholder="Enter your full name"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email
+                  <label className="block text-sm font-medium text-slate-300 mb-3">
+                    Email Address
                   </label>
                   <input
                     type="email"
                     value={profile?.email || ''}
                     disabled
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500"
+                    className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600/30 rounded-xl text-slate-400 cursor-not-allowed"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                  <p className="text-xs text-slate-500 mt-2">Email cannot be changed</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Location (Canadian Province)
+                  <label className="block text-sm font-medium text-slate-300 mb-3">
+                    Canadian Province
                   </label>
                   <select
                     name="location"
                     value={formData.location}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-black"
+                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
                   >
                     <option value="">Select a province</option>
                     <option value="Alberta">Alberta</option>
@@ -270,7 +358,7 @@ export default function ProfilePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-3">
                     Job Preference
                   </label>
                   <input
@@ -278,13 +366,13 @@ export default function ProfilePage() {
                     name="job_preference"
                     value={formData.job_preference}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-black"
+                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
                     placeholder="e.g., Software Developer, Data Analyst"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-3">
                     Country of Origin
                   </label>
                   <input
@@ -292,115 +380,152 @@ export default function ProfilePage() {
                     name="origin_country"
                     value={formData.origin_country}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-black"
+                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
                     placeholder="e.g., India, China, Philippines"
                   />
                 </div>
+              </div>
 
+              <div className="flex justify-end mt-8">
                 <button
                   onClick={handleSaveProfile}
                   disabled={isSaving}
-                  className="w-full btn-primary flex items-center justify-center"
+                  className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   {isSaving ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                   ) : (
-                    <Save className="w-4 h-4 mr-2" />
+                    <Save className="w-4 h-4" />
                   )}
-                  {isSaving ? 'Saving...' : 'Save Profile'}
+                  <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
                 </button>
               </div>
             </div>
-          </div>
 
-          {/* Resume Section */}
-          <div className="space-y-6">
-            <div className="card">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
-                <Briefcase className="w-5 h-5 mr-2" />
-                Resume Management
-              </h2>
+            {/* Resume Management */}
+            <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-8 border border-slate-700/50">
+              <div className="flex items-center space-x-3 mb-8">
+                <div className="p-3 bg-purple-500/20 rounded-xl">
+                  <Briefcase className="w-6 h-6 text-purple-400" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">Resume Management</h2>
+                  <p className="text-slate-400 text-sm">Upload and manage your professional resume</p>
+                </div>
+              </div>
 
               {!profile?.resume_text ? (
-                <div>
-                  <p className="text-gray-600 mb-4">
-                    Upload your resume to get AI-powered analysis and keyword extraction
-                  </p>
+                <div className="space-y-6">
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Upload className="w-8 h-8 text-purple-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-white mb-2">No Resume Uploaded</h3>
+                    <p className="text-slate-400 mb-6">
+                      Upload your resume to get AI-powered analysis and keyword extraction
+                    </p>
+                  </div>
+
                   <div
                     {...getRootProps()}
-                    className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-                      isDragActive
-                        ? 'border-primary-500 bg-primary-50'
-                        : 'border-gray-300 hover:border-primary-400'
-                    }`}
+                    className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all ${isDragActive
+                      ? 'border-purple-500/50 bg-purple-500/10'
+                      : 'border-slate-600/50 hover:border-purple-500/30 hover:bg-purple-500/5'
+                      }`}
                   >
                     <input {...getInputProps()} />
-                    <Upload className="w-8 h-8 text-gray-400 mx-auto mb-3" />
-                    {isDragActive ? (
-                      <p className="text-primary-600 font-medium">Drop your PDF resume here</p>
-                    ) : (
-                      <div>
-                        <p className="text-gray-600 mb-1">
-                          Drag and drop your PDF resume here, or click to select
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          Maximum file size: 10MB
-                        </p>
+                    <div className="space-y-4">
+                      <div className="w-20 h-20 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto">
+                        <Upload className="w-10 h-10 text-purple-400" />
                       </div>
-                    )}
+                      {isDragActive ? (
+                        <div>
+                          <p className="text-purple-400 font-medium text-lg">Drop your PDF resume here</p>
+                          <p className="text-slate-400">Release to upload</p>
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="text-white font-medium text-lg mb-2">
+                            Drag and drop your PDF resume here
+                          </p>
+                          <p className="text-slate-400 mb-2">or click to browse files</p>
+                          <p className="text-sm text-slate-500">
+                            Maximum file size: 10MB • PDF format only
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
+
                   {isUploading && (
-                    <div className="mt-4 text-center">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mx-auto"></div>
-                      <p className="text-gray-600 mt-2">Processing your resume...</p>
+                    <div className="text-center py-6">
+                      <div className="relative inline-block">
+                        <div className="w-8 h-8 border-4 border-purple-400/20 border-t-purple-400 rounded-full animate-spin"></div>
+                      </div>
+                      <p className="text-slate-300 mt-3 font-medium">Processing your resume...</p>
+                      <p className="text-slate-400 text-sm">This may take a moment</p>
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
+                <div className="space-y-6">
+                  {/* Resume Status */}
+                  <div className="flex items-center justify-between p-6 bg-gradient-to-r from-green-500/20 to-emerald-600/20 rounded-2xl border border-green-500/30">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-green-500/30 rounded-xl flex items-center justify-center">
+                        <CheckCircle className="w-6 h-6 text-green-400" />
+                      </div>
                       <div>
-                        <p className="font-medium text-green-800">{profile.resume_filename}</p>
-                        <p className="text-sm text-green-600">Resume uploaded successfully</p>
+                        <p className="font-semibold text-green-100 text-lg">{profile.resume_filename}</p>
+                        <p className="text-green-300 text-sm">Resume uploaded and processed successfully</p>
                       </div>
                     </div>
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-3">
                       <button
                         onClick={() => setShowResumePreview(!showResumePreview)}
-                        className="btn-secondary flex items-center text-sm"
+                        className="flex items-center space-x-2 px-4 py-2 bg-slate-700/50 hover:bg-slate-600/50 text-white rounded-xl transition-all"
                       >
-                        <Eye className="w-4 h-4 mr-1" />
-                        {showResumePreview ? 'Hide' : 'Preview'}
+                        <Eye className="w-4 h-4" />
+                        <span>{showResumePreview ? 'Hide' : 'Preview'}</span>
                       </button>
                       <button
                         onClick={removeResume}
-                        className="btn-secondary flex items-center text-sm text-red-600 hover:text-red-700"
+                        className="flex items-center space-x-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl transition-all"
                       >
-                        <X className="w-4 h-4 mr-1" />
-                        Remove
+                        <X className="w-4 h-4" />
+                        <span>Remove</span>
                       </button>
                     </div>
                   </div>
 
+                  {/* Resume Preview */}
                   {showResumePreview && profile.resume_text && (
-                    <div className="border rounded-lg p-4 bg-gray-50 max-h-64 overflow-y-auto">
-                      <h4 className="font-medium text-gray-900 mb-2">Resume Preview</h4>
-                      <div className="text-sm text-gray-700 whitespace-pre-wrap">
-                        {profile.resume_text.substring(0, 500)}...
+                    <div className="bg-slate-700/30 rounded-2xl p-6 border border-slate-600/30">
+                      <h4 className="font-semibold text-white mb-4 flex items-center space-x-2">
+                        <FileText className="w-5 h-5 text-blue-400" />
+                        <span>Resume Preview</span>
+                      </h4>
+                      <div className="bg-slate-800/50 rounded-xl p-4 max-h-64 overflow-y-auto">
+                        <div className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
+                          {profile.resume_text.substring(0, 1000)}
+                          {profile.resume_text.length > 1000 && '...'}
+                        </div>
                       </div>
                     </div>
                   )}
 
+                  {/* Keywords */}
                   {profile.resume_keywords && profile.resume_keywords.length > 0 && (
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-2">Extracted Keywords</h4>
+                    <div className="bg-slate-700/30 rounded-2xl p-6 border border-slate-600/30">
+                      <h4 className="font-semibold text-white mb-4 flex items-center space-x-2">
+                        <Sparkles className="w-5 h-5 text-purple-400" />
+                        <span>Extracted Keywords</span>
+                      </h4>
                       <div className="flex flex-wrap gap-2">
                         {profile.resume_keywords.map((keyword, index) => (
                           <span
                             key={index}
-                            className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                            className="px-3 py-1 bg-gradient-to-r from-blue-500/20 to-purple-600/20 border border-blue-500/30 text-blue-300 text-sm rounded-full"
                           >
                             {keyword}
                           </span>
@@ -409,22 +534,22 @@ export default function ProfilePage() {
                     </div>
                   )}
 
-                  {/* Upload new resume */}
-                  <div className="border-t pt-4">
-                    <p className="text-sm text-gray-600 mb-3">Upload a new resume to replace the current one:</p>
+                  {/* Upload New Resume */}
+                  <div className="border-t border-slate-600/30 pt-6">
+                    <h4 className="font-medium text-white mb-4">Replace Resume</h4>
                     <div
                       {...getRootProps()}
-                      className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
-                        isDragActive
-                          ? 'border-primary-500 bg-primary-50'
-                          : 'border-gray-300 hover:border-primary-400'
-                      }`}
+                      className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${isDragActive
+                        ? 'border-purple-500/50 bg-purple-500/10'
+                        : 'border-slate-600/50 hover:border-purple-500/30'
+                        }`}
                     >
                       <input {...getInputProps()} />
-                      <Upload className="w-6 h-6 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm text-gray-600">
+                      <Upload className="w-8 h-8 text-slate-400 mx-auto mb-3" />
+                      <p className="text-slate-300 mb-1">
                         {isDragActive ? 'Drop new PDF here' : 'Click to upload new resume'}
                       </p>
+                      <p className="text-slate-500 text-sm">This will replace your current resume</p>
                     </div>
                   </div>
                 </div>
@@ -435,4 +560,4 @@ export default function ProfilePage() {
       </div>
     </div>
   )
-} 
+}

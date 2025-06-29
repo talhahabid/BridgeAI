@@ -19,13 +19,13 @@ async def lifespan(app: FastAPI):
         
         print(f"Connecting to MongoDB with URI: {mongodb_uri.replace('new:123', '***:***')}")
         
-        app.mongodb_client = AsyncIOMotorClient(mongodb_uri)
+        app.mongodb_client = AsyncIOMotorClient(mongodb_uri)  # type: ignore[attr-defined]
         
         # Test the connection
-        await app.mongodb_client.admin.command('ping')
+        await app.mongodb_client.admin.command('ping')  # type: ignore[attr-defined]
         print("MongoDB connection test successful")
         
-        app.mongodb = app.mongodb_client.immigrant_job_finder
+        app.mongodb = app.mongodb_client.immigrant_job_finder  # type: ignore[attr-defined]
         print("Connected to MongoDB")
         
     except Exception as e:
@@ -36,7 +36,7 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     if hasattr(app, 'mongodb_client'):
-        app.mongodb_client.close()
+        app.mongodb_client.close()  # type: ignore[attr-defined]
         print("Disconnected from MongoDB")
 
 app = FastAPI(

@@ -14,9 +14,9 @@ security = HTTPBearer()
 
 @router.post("/upload")
 async def upload_resume(
+    request: Request,
     file: UploadFile = File(...),
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    request: Request = None
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Upload and parse a PDF resume."""
     try:
@@ -27,7 +27,7 @@ async def upload_resume(
         db = await get_database(request)
         
         # Check file type
-        if not file.filename.lower().endswith('.pdf'):
+        if not file.filename or not file.filename.lower().endswith('.pdf'):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Only PDF files are allowed"
@@ -96,8 +96,8 @@ async def upload_resume(
 
 @router.get("/content")
 async def get_resume_content(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    request: Request = None
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Get the current user's parsed resume content."""
     try:
@@ -133,8 +133,8 @@ async def get_resume_content(
 
 @router.delete("/remove")
 async def remove_resume(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    request: Request = None
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Remove the current user's resume."""
     try:
