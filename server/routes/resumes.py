@@ -12,9 +12,14 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
+import httpx
+import subprocess
+import json
 
 from utils.auth import get_current_user_id, get_current_user
 from utils.pdf_parser import resume_parser
+from utils.groq_service import groq_service
+from utils.pdf_editor import pdf_editor
 from database import get_database
 from models.user import UserResponse
 
@@ -331,4 +336,184 @@ async def download_resume(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error downloading resume: {str(e)}"
-        ) 
+        )
+
+@router.post("/generate-documents")
+async def generate_tailored_documents(
+    job_description: str = Form(...),
+    document_type: str = Form(..., description="cover_letter, optimized_resume, or both"),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request = None
+):
+    """
+    Generate AI-powered tailored documents (cover letter and/or optimized resume)
+    """
+    try:
+        # Verify user
+        user_id = get_current_user_id(credentials.credentials)
+        
+        # Get database
+        db = await get_database(request)
+        
+        # Get user's resume data
+        user = await db.users.find_one({"_id": ObjectId(user_id)})
+        if not user or not user.get("resume_text"):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No resume found. Please upload a resume first."
+            )
+        
+        # Extract user information
+        user_info = {
+            "name": user.get("name", ""),
+            "location": user.get("location", ""),
+            "job_preference": user.get("job_preference", ""),
+            "origin_country": user.get("origin_country", ""),
+            "resume_text": user.get("resume_text", ""),
+            "resume_keywords": user.get("resume_keywords", [])
+        }
+        
+        generated_files = []
+        
+        # Generate cover letter if requested
+        if document_type in ["cover_letter", "both"]:
+            cover_letter_content = await generate_cover_letter(user_info, job_description)
+            cover_letter_pdf = await create_latex_pdf(cover_letter_content, "cover_letter", user_info["name"])
+            generated_files.append({
+                "type": "cover_letter",
+                "filename": f"{user_info['name'].replace(' ', '_')}_Cover_Letter.pdf",
+                "path": cover_letter_pdf
+            })
+        
+        # Generate optimized resume if requested
+        if document_type in ["optimized_resume", "both"]:
+            optimized_resume_content = await generate_optimized_resume(user_info, job_description)
+            optimized_resume_pdf = await create_latex_pdf(optimized_resume_content, "resume", user_info["name"])
+            generated_files.append({
+                "type": "optimized_resume",
+                "filename": f"{user_info['name'].replace(' ', '_')}_Optimized_Resume.pdf",
+                "path": optimized_resume_pdf
+            })
+        
+        return {
+            "success": True,
+            "message": f"Generated {len(generated_files)} document(s) successfully",
+            "files": generated_files
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error generating documents: {str(e)}"
+        )
+
+async def generate_cover_letter(user_info: Dict[str, Any], job_description: str) -> str:
+    """Generate a tailored cover letter using Groq AI"""
+    
+    try:
+        response = await groq_service.generate_cover_letter(user_info, job_description)
+        return response
+    except Exception as e:
+        print(f"Error generating cover letter: {str(e)}")
+        # Fallback cover letter template
+        return f"""
+Dear Hiring Manager,
+
+I am writing to express my strong interest in the position you have advertised. As a {user_info['job_preference']} with experience from {user_info['origin_country']}, I am excited about the opportunity to contribute to your team in {user_info['location']}, Canada.
+
+My background includes {', '.join(user_info['resume_keywords'][:5])}, which I believe align well with the requirements of this position. I am particularly drawn to this opportunity because it represents the kind of role where I can make meaningful contributions while continuing to grow professionally in the Canadian market.
+
+I am confident that my skills and experience would be valuable to your organization, and I am excited about the possibility of joining your team. I would welcome the opportunity to discuss how my background, skills, and enthusiasm would make me a valuable addition to your company.
+
+Thank you for considering my application. I look forward to the possibility of speaking with you about this opportunity.
+
+Sincerely,
+{user_info['name']}
+"""
+
+async def generate_optimized_resume(user_info: Dict[str, Any], job_description: str) -> str:
+    """Generate an optimized resume using Groq AI"""
+    
+    try:
+        response = await groq_service.generate_optimized_resume(user_info, job_description)
+        return response
+    except Exception as e:
+        print(f"Error generating optimized resume: {str(e)}")
+        # Fallback optimized resume
+        return f"""
+{user_info['name'].upper()}
+{user_info['location']}, Canada
+
+PROFESSIONAL SUMMARY
+Experienced {user_info['job_preference']} with background from {user_info['origin_country']}. Skilled in {', '.join(user_info['resume_keywords'][:3])} with a proven track record of delivering results in dynamic environments.
+
+SKILLS
+{', '.join(user_info['resume_keywords'])}
+
+EXPERIENCE
+[Optimized experience based on job requirements]
+
+EDUCATION
+[Relevant education and certifications]
+
+ADDITIONAL INFORMATION
+• Adaptable professional with international experience
+• Strong cross-cultural communication skills
+• Committed to continuous learning and professional development
+"""
+
+async def create_latex_pdf(content: str, document_type: str, user_name: str) -> str:
+    """Create a PDF using ReportLab instead of LaTeX"""
+    
+    try:
+        if document_type == "cover_letter":
+            pdf_path = pdf_editor.create_cover_letter_pdf(content, user_name, f"{user_name}_Cover_Letter.pdf")
+        else:  # resume
+            pdf_path = pdf_editor.create_resume_pdf(content, user_name, f"{user_name}_Optimized_Resume.pdf")
+        
+        return pdf_path
+        
+    except Exception as e:
+        print(f"Error creating PDF: {str(e)}")
+        # Fallback: create a simple text file
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as temp_file:
+            temp_file.write(content)
+            return temp_file.name
+
+@router.get("/download-generated/{file_path:path}")
+async def download_generated_document(
+    file_path: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request = None
+):
+    """Download a generated document"""
+    try:
+        # Verify user
+        user_id = get_current_user_id(credentials.credentials)
+        
+        # Check if the file exists
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="Generated document not found")
+        
+        # Get filename from path
+        filename = os.path.basename(file_path)
+        
+        # Return the PDF file with proper headers for iframe preview
+        return FileResponse(
+            path=file_path,
+            filename=filename,
+            media_type='application/pdf',
+            headers={
+                'Content-Disposition': f'inline; filename="{filename}"',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error downloading document: {str(e)}") 

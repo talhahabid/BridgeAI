@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import axios from 'axios'
 import { useDropzone } from 'react-dropzone'
-import { Upload, FileText, X, Check, Eye, Download, Target, Loader2, Star } from 'lucide-react'
+import { Upload, FileText, X, Check, Eye, Download, Target, Loader2, Star, FileEdit, FilePlus, ExternalLink } from 'lucide-react'
 
 interface ResumeData {
   resume_text: string
@@ -22,14 +22,27 @@ interface ATSEvaluation {
   job_description_preview: string
 }
 
+interface GeneratedDocument {
+  type: string
+  filename: string
+  path: string
+  previewUrl?: string
+}
+
 export default function ResumePage() {
   const [resumeData, setResumeData] = useState<ResumeData | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [showATSEvaluation, setShowATSEvaluation] = useState(false)
+  const [showDocumentGenerator, setShowDocumentGenerator] = useState(false)
   const [jobDescription, setJobDescription] = useState('')
   const [atsEvaluation, setAtsEvaluation] = useState<ATSEvaluation | null>(null)
   const [isEvaluating, setIsEvaluating] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [documentType, setDocumentType] = useState('both')
+  const [generatedDocuments, setGeneratedDocuments] = useState<GeneratedDocument[]>([])
+  const [previewDocument, setPreviewDocument] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
   useEffect(() => {
@@ -38,6 +51,7 @@ export default function ResumePage() {
 
   const fetchResumeData = async () => {
     try {
+      setIsLoading(true)
       const token = localStorage.getItem('token')
       const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/resumes/content`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -46,7 +60,11 @@ export default function ResumePage() {
     } catch (error: any) {
       if (error.response?.status === 401) {
         router.push('/')
+      } else {
+        console.error('Error fetching resume data:', error)
       }
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -79,6 +97,7 @@ export default function ResumePage() {
       toast.success('Resume uploaded and parsed successfully!')
       fetchResumeData()
     } catch (error: any) {
+      console.error('Upload error:', error)
       toast.error(error.response?.data?.detail || 'Failed to upload resume')
     } finally {
       setIsUploading(false)
@@ -102,7 +121,10 @@ export default function ResumePage() {
       toast.success('Resume removed successfully')
       setResumeData(null)
       setAtsEvaluation(null)
+      setGeneratedDocuments([])
+      setPreviewDocument(null)
     } catch (error: any) {
+      console.error('Remove error:', error)
       toast.error('Failed to remove resume')
     }
   }
@@ -171,6 +193,100 @@ export default function ResumePage() {
     }
   }
 
+  const generateDocuments = async () => {
+    if (!jobDescription.trim()) {
+      toast.error('Please enter a job description')
+      return
+    }
+
+    if (!resumeData?.has_resume) {
+      toast.error('Please upload a resume first')
+      return
+    }
+
+    setIsGenerating(true)
+    try {
+      const token = localStorage.getItem('token')
+      
+      const formData = new FormData()
+      formData.append('job_description', jobDescription)
+      formData.append('document_type', documentType)
+
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/resumes/generate-documents`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      )
+
+      // Add preview URLs to the documents
+      const documentsWithPreview = response.data.files.map((doc: GeneratedDocument) => ({
+        ...doc,
+        previewUrl: `${process.env.NEXT_PUBLIC_API_URL}/api/resumes/download-generated/${doc.path}`
+      }))
+
+      setGeneratedDocuments(documentsWithPreview)
+      toast.success(response.data.message)
+    } catch (error: any) {
+      console.error('Document generation error:', error)
+      toast.error(error.response?.data?.detail || 'Failed to generate documents')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const downloadGeneratedDocument = async (filePath: string, filename: string) => {
+    try {
+      const token = localStorage.getItem('token')
+      
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/resumes/download-generated/${filePath}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: 'blob'
+        }
+      )
+
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', filename)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+      
+      toast.success('Document downloaded successfully!')
+    } catch (error: any) {
+      console.error('Download error:', error)
+      toast.error('Failed to download document')
+    }
+  }
+
+  const showDocumentPreview = (previewUrl: string) => {
+    setPreviewDocument(previewUrl)
+  }
+
+  const closePreview = () => {
+    setPreviewDocument(null)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary-600" />
+          <p className="text-gray-600">Loading resume data...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 py-8">
@@ -187,7 +303,7 @@ export default function ResumePage() {
           </button>
           <h1 className="text-3xl font-bold text-gray-900">Resume Management</h1>
           <p className="text-gray-600 mt-2">
-            Upload your resume to get AI-powered analysis, keyword extraction, and ATS optimization feedback
+            Upload your resume to get AI-powered analysis, keyword extraction, ATS optimization, and generate tailored documents
           </p>
         </div>
 
@@ -220,8 +336,8 @@ export default function ResumePage() {
             </div>
             {isUploading && (
               <div className="mt-4 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-                <p className="text-gray-600 mt-2">Processing your resume...</p>
+                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-primary-600" />
+                <p className="text-gray-600">Processing your resume...</p>
               </div>
             )}
           </div>
@@ -236,8 +352,15 @@ export default function ResumePage() {
                 <h2 className="text-xl font-semibold text-gray-900">Resume Analysis</h2>
                 <div className="flex space-x-2">
                   <button
-                    onClick={() => setShowATSEvaluation(!showATSEvaluation)}
+                    onClick={() => setShowDocumentGenerator(!showDocumentGenerator)}
                     className="btn-primary flex items-center"
+                  >
+                    <FilePlus className="w-4 h-4 mr-2" />
+                    Generate Documents
+                  </button>
+                  <button
+                    onClick={() => setShowATSEvaluation(!showATSEvaluation)}
+                    className="btn-secondary flex items-center"
                   >
                     <Target className="w-4 h-4 mr-2" />
                     ATS Evaluation
@@ -289,6 +412,109 @@ export default function ResumePage() {
                 </div>
               </div>
             </div>
+
+            {/* Document Generator Section */}
+            {showDocumentGenerator && (
+              <div className="card">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                  <FileEdit className="w-5 h-5 mr-2 text-primary-600" />
+                  AI-Powered Document Generator
+                </h2>
+                <p className="text-gray-600 mb-6">
+                  Generate tailored cover letters and optimized resumes using AI, formatted professionally with ReportLab.
+                </p>
+                <p className="text-sm text-gray-500 mb-4 bg-green-50 p-3 rounded-lg">
+                  🎯 <strong>How it works:</strong> Our AI analyzes your resume and the job description to create personalized documents that follow Canadian standards and are optimized for ATS systems.
+                </p>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Job Description
+                    </label>
+                    <textarea
+                      value={jobDescription}
+                      onChange={(e) => setJobDescription(e.target.value)}
+                      placeholder="Paste the job description here to generate tailored documents..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-black min-h-32"
+                      rows={8}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Document Type
+                    </label>
+                    <select
+                      value={documentType}
+                      onChange={(e) => setDocumentType(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-black"
+                    >
+                      <option value="both">Cover Letter & Optimized Resume</option>
+                      <option value="cover_letter">Cover Letter Only</option>
+                      <option value="optimized_resume">Optimized Resume Only</option>
+                    </select>
+                  </div>
+
+                  <button
+                    onClick={generateDocuments}
+                    disabled={isGenerating || !jobDescription.trim()}
+                    className="btn-primary flex items-center justify-center w-full"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Generating Documents with AI...
+                      </>
+                    ) : (
+                      <>
+                        <FileEdit className="w-4 h-4 mr-2" />
+                        Generate Tailored Documents
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Generated Documents */}
+                {generatedDocuments.length > 0 && (
+                  <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                      <FilePlus className="w-5 h-5 mr-2 text-green-600" />
+                      Generated Documents
+                    </h3>
+                    <div className="space-y-3">
+                      {generatedDocuments.map((doc, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                          <div className="flex items-center">
+                            <FileText className="w-5 h-5 text-green-600 mr-3" />
+                            <div>
+                              <p className="font-medium text-gray-900">{doc.filename}</p>
+                              <p className="text-sm text-gray-500 capitalize">{doc.type.replace('_', ' ')}</p>
+                            </div>
+                          </div>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => showDocumentPreview(doc.previewUrl!)}
+                              className="btn-secondary flex items-center"
+                            >
+                              <Eye className="w-4 h-4 mr-2" />
+                              Preview
+                            </button>
+                            <button
+                              onClick={() => downloadGeneratedDocument(doc.path, doc.filename)}
+                              className="btn-secondary flex items-center"
+                            >
+                              <Download className="w-4 h-4 mr-2" />
+                              Download
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ATS Evaluation Section */}
             {showATSEvaluation && (
@@ -400,6 +626,44 @@ export default function ResumePage() {
           </div>
         )}
       </div>
+
+      {/* PDF Preview Modal */}
+      {previewDocument && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-4xl h-full max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">Document Preview</h3>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => {
+                    const link = document.createElement('a')
+                    link.href = previewDocument
+                    link.target = '_blank'
+                    link.click()
+                  }}
+                  className="btn-secondary flex items-center"
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Open in New Tab
+                </button>
+                <button
+                  onClick={closePreview}
+                  className="btn-secondary"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 p-4">
+              <iframe
+                src={previewDocument}
+                className="w-full h-full border rounded"
+                title="Document Preview"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 } 
