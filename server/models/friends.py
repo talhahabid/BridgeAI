@@ -1,24 +1,26 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 from bson import ObjectId
 
 class PyObjectId(ObjectId):
     @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-
+    def __get_pydantic_core_schema__(cls, source_type, handler):
+        return handler(ObjectId)
+    
     @classmethod
     def validate(cls, v):
         if not ObjectId.is_valid(v):
             raise ValueError("Invalid ObjectId")
         return ObjectId(v)
 
-    @classmethod
-    def __modify_schema__(cls, field_schema):
-        field_schema.update(type="string")
-
 class FriendRequest(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+        json_encoders={ObjectId: str}
+    )
+    
     id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
     sender_id: PyObjectId
     receiver_id: PyObjectId
@@ -26,15 +28,15 @@ class FriendRequest(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    class Config:
-        allow_population_by_field_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
-
 class FriendRequestCreate(BaseModel):
     receiver_id: str
 
 class FriendRequestResponse(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name=True,
+        json_encoders={ObjectId: str}
+    )
+    
     id: Optional[str] = Field(None)
     sender_id: str
     receiver_id: str
@@ -43,11 +45,13 @@ class FriendRequestResponse(BaseModel):
     status: str
     created_at: datetime
 
-    class Config:
-        allow_population_by_field_name = True
-        json_encoders = {ObjectId: str}
-
 class ChatMessage(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+        json_encoders={ObjectId: str}
+    )
+    
     id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
     sender_id: PyObjectId
     receiver_id: PyObjectId
@@ -55,16 +59,16 @@ class ChatMessage(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     is_read: bool = Field(default=False)
 
-    class Config:
-        allow_population_by_field_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
-
 class ChatMessageCreate(BaseModel):
     receiver_id: str
     content: str = Field(..., min_length=1, max_length=1000)
 
 class ChatMessageResponse(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name=True,
+        json_encoders={ObjectId: str}
+    )
+    
     id: Optional[str] = Field(None, alias="_id")
     sender_id: str
     receiver_id: str
@@ -72,10 +76,6 @@ class ChatMessageResponse(BaseModel):
     content: str
     created_at: datetime
     is_read: bool
-
-    class Config:
-        allow_population_by_field_name = True
-        json_encoders = {ObjectId: str}
 
 class UserWithJobPreference(BaseModel):
     id: str
