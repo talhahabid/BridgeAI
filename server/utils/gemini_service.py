@@ -2,6 +2,10 @@ import google.generativeai as genai
 import os
 from typing import Dict, List, Any
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 class GeminiService:
     def __init__(self):

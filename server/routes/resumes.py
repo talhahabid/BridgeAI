@@ -286,9 +286,8 @@ async def evaluate_resume_ats(
                 driver.quit()
                 
         except Exception as web_error:
-            print(f"Web scraping failed: {str(web_error)}")
-            # Fallback to basic ATS analysis
-            return await perform_basic_ats_analysis(resume_file, job_description, temp_file_path)
+            # print(f"Web scraping failed: {str(web_error)}")
+            raise HTTPException(status_code=500, detail=f"Web scraping failed: {str(web_error)}")
             
     except Exception as e:
         # Clean up temporary file if it exists
@@ -480,7 +479,8 @@ async def generate_cover_letter(user_info: Dict[str, Any], job_description: str)
         response = await get_groq_service().generate_cover_letter(user_info, job_description)
         return response
     except Exception as e:
-        print(f"Error generating cover letter: {str(e)}")
+        # print(f"Error generating cover letter: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating cover letter: {str(e)}")
         # Fallback cover letter template
         return f"""
 Dear Hiring Manager,
@@ -504,7 +504,8 @@ async def generate_optimized_resume(user_info: Dict[str, Any], job_description: 
         response = await get_groq_service().generate_optimized_resume(user_info, job_description)
         return response
     except Exception as e:
-        print(f"Error generating optimized resume: {str(e)}")
+        # print(f"Error generating optimized resume: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating optimized resume: {str(e)}")
         # Fallback optimized resume
         return f"""
 {user_info['name'].upper()}
@@ -540,7 +541,8 @@ async def create_latex_pdf(content: str, document_type: str, user_name: str) -> 
         return pdf_path
         
     except Exception as e:
-        print(f"Error creating PDF: {str(e)}")
+        # print(f"Error creating PDF: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error creating PDF: {str(e)}")
         # Fallback: create a simple text file
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as temp_file:
             temp_file.write(content)

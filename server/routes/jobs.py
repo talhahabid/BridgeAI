@@ -13,10 +13,9 @@ JSEARCH_API_URL = "https://jsearch.p.rapidapi.com/search"
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY")
 
 # Print the API key (masked for security)
-if RAPIDAPI_KEY:
-    print(f"Loaded RAPIDAPI_KEY: {'*' * (len(RAPIDAPI_KEY)-4) + RAPIDAPI_KEY[-4:]}")
-else:
-    print("Warning: RAPIDAPI_KEY not found in environment variables")
+if not RAPIDAPI_KEY:
+    # print("Warning: RAPIDAPI_KEY not found in environment variables")
+    pass
 
 HEADERS = {
     "x-rapidapi-key": RAPIDAPI_KEY,

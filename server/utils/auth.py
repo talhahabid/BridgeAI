@@ -4,6 +4,10 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import HTTPException, status, Depends, Request
 import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

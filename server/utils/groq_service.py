@@ -2,6 +2,10 @@ import os
 import requests
 import json
 from typing import Optional
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 class GroqService:
     def __init__(self):

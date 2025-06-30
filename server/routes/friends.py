@@ -185,7 +185,6 @@ async def accept_friend_request(
     db = Depends(get_database)
 ):
     """Accept a friend request"""
-    print(f"Accepting friend request with ID: {request_id}")
     try:
         user_id = ObjectId(current_user["id"])
         request_obj_id = ObjectId(request_id)
@@ -211,7 +210,6 @@ async def accept_friend_request(
         return {"message": "Friend request accepted"}
         
     except Exception as e:
-        print(f"Error accepting friend request: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/request/{request_id}/reject")
@@ -221,7 +219,6 @@ async def reject_friend_request(
     db = Depends(get_database)
 ):
     """Reject a friend request"""
-    print(f"Rejecting friend request with ID: {request_id}")
     try:
         user_id = ObjectId(current_user["id"])
         request_obj_id = ObjectId(request_id)
@@ -247,7 +244,6 @@ async def reject_friend_request(
         return {"message": "Friend request rejected"}
         
     except Exception as e:
-        print(f"Error rejecting friend request: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/friends", response_model=List[UserWithJobPreference])

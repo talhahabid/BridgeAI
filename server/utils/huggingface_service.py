@@ -2,21 +2,33 @@ import os
 import requests
 import json
 from typing import Optional
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 class HuggingFaceService:
     def __init__(self):
-        # Use the token directly since we have it
-        self.api_token = "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"
-        self.base_url = "https://api-inference.huggingface.co/models"
-        # Using Mistral-7B-Instruct-v0.2 for good instruction following
-        self.model = "mistralai/Mistral-7B-Instruct-v0.2"
-        self.api_url = f"{self.base_url}/{self.model}"
-        self.headers = {"Authorization": f"Bearer {self.api_token}"}
+        # Get Hugging Face API token from environment variable
+        self.api_token = os.getenv("HUGGINGFACE_API_TOKEN")
+        self.available = bool(self.api_token)
+        
+        if self.available:
+            self.base_url = "https://api-inference.huggingface.co/models"
+            # Using Mistral-7B-Instruct-v0.2 for good instruction following
+            self.model = "mistralai/Mistral-7B-Instruct-v0.2"
+            self.api_url = f"{self.base_url}/{self.model}"
+            self.headers = {"Authorization": f"Bearer {self.api_token}"}
+        else:
+            print("Warning: HUGGINGFACE_API_TOKEN not set. Hugging Face service will not be available.")
     
     async def generate_text(self, prompt: str, max_length: int = 2048) -> str:
         """
         Generate text using Hugging Face Inference API
         """
+        if not self.available:
+            return "Hugging Face service is not available. Please set HUGGINGFACE_API_TOKEN environment variable."
+        
         try:
             # Format prompt for Mistral instruction following
             formatted_prompt = f"<s>[INST] {prompt} [/INST]"

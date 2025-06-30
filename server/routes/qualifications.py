@@ -1,19 +1,19 @@
-from fastapi import APIRouter, HTTPException, status, Depends, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from motor.motor_asyncio import AsyncIOMotorDatabase
-from bson import ObjectId
+import os
 from datetime import datetime
 from typing import Dict, Any, List
-
+from fastapi import APIRouter, HTTPException, status, Depends, Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from bson import ObjectId
+from motor.motor_asyncio import AsyncIOMotorDatabase
+from typing import Dict, Any, List
 
 from utils.auth import get_current_user_id
 from utils.gemini_service import GeminiService
 from database import get_database
 from dotenv import load_dotenv
-import os
 
+# Load environment variables
 load_dotenv()
-
 
 router = APIRouter()
 security = HTTPBearer()
@@ -294,7 +294,7 @@ async def generate_qualification_path(
             
             # If Gemini fails, fall back to the basic method
             if not result.get('success'):
-                print(f"Gemini API failed: {result.get('error')}")
+                # print(f"Gemini API failed: {result.get('error')}")
                 result = generate_fallback_qualification_path(user_data)
         
         if not result.get('success'):
@@ -332,9 +332,10 @@ async def generate_qualification_path(
     except HTTPException:
         raise
     except Exception as e:
+        # print(f"Gemini API failed: {result.get('error')}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error generating qualification path: {str(e)}"
+            detail=f"Error generating qualification path: {result.get('error')}"
         )
 
 def generate_fallback_qualification_path(user_data: Dict[str, Any]) -> Dict[str, Any]:
