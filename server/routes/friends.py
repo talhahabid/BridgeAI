@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 from typing import List
@@ -10,18 +11,22 @@ from models.friends import (
     ChatMessage, ChatMessageCreate, ChatMessageResponse,
     UserWithJobPreference, PyObjectId
 )
-from utils.auth import get_current_user
+from utils.auth import get_current_user_id
 
 router = APIRouter()
+security = HTTPBearer()
 
 @router.get("/discover", response_model=List[UserWithJobPreference])
 async def discover_users_with_same_job_preference(
-    current_user: dict = Depends(get_current_user),
-    db = Depends(get_database)
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Discover users with the same job preference"""
     try:
-        current_user_id = ObjectId(current_user["id"])
+        current_user_id = ObjectId(get_current_user_id(credentials.credentials))
+        
+        # Get database directly from app state
+        db = request.app.mongodb
         
         # Get current user's job preference
         user = await db.users.find_one({"_id": current_user_id})
@@ -32,9 +37,8 @@ async def discover_users_with_same_job_preference(
         if not job_preference:
             raise HTTPException(status_code=400, detail="Please set your job preference first")
         
-        # Find users with the same job preference (excluding current user)
+        # Find all users except the current user
         users_cursor = db.users.find({
-            "job_preference": job_preference,
             "_id": {"$ne": current_user_id}
         })
         
@@ -92,13 +96,16 @@ async def discover_users_with_same_job_preference(
 @router.post("/request", response_model=FriendRequestResponse)
 async def send_friend_request(
     request_data: FriendRequestCreate,
-    current_user: dict = Depends(get_current_user),
-    db = Depends(get_database)
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Send a friend request"""
     try:
-        sender_id = ObjectId(current_user["id"])
+        sender_id = ObjectId(get_current_user_id(credentials.credentials))
         receiver_id = ObjectId(request_data.receiver_id)
+        
+        # Get database directly from app state
+        db = request.app.mongodb
         
         # Check if receiver exists
         receiver = await db.users.find_one({"_id": receiver_id})
@@ -142,12 +149,15 @@ async def send_friend_request(
 
 @router.get("/requests", response_model=List[FriendRequestResponse])
 async def get_friend_requests(
-    current_user: dict = Depends(get_current_user),
-    db = Depends(get_database)
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Get pending friend requests"""
     try:
-        user_id = ObjectId(current_user["id"])
+        user_id = ObjectId(get_current_user_id(credentials.credentials))
+        
+        # Get database directly from app state
+        db = request.app.mongodb
         
         # Get received requests
         requests_cursor = db.friend_requests.find({
@@ -181,14 +191,16 @@ async def get_friend_requests(
 @router.put("/request/{request_id}/accept")
 async def accept_friend_request(
     request_id: str,
-    current_user: dict = Depends(get_current_user),
-    db = Depends(get_database)
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Accept a friend request"""
-    print(f"Accepting friend request with ID: {request_id}")
     try:
-        user_id = ObjectId(current_user["id"])
+        user_id = ObjectId(get_current_user_id(credentials.credentials))
         request_obj_id = ObjectId(request_id)
+        
+        # Get database directly from app state
+        db = request.app.mongodb
         
         # Find and update the request
         result = await db.friend_requests.update_one(
@@ -211,20 +223,21 @@ async def accept_friend_request(
         return {"message": "Friend request accepted"}
         
     except Exception as e:
-        print(f"Error accepting friend request: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/request/{request_id}/reject")
 async def reject_friend_request(
     request_id: str,
-    current_user: dict = Depends(get_current_user),
-    db = Depends(get_database)
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Reject a friend request"""
-    print(f"Rejecting friend request with ID: {request_id}")
     try:
-        user_id = ObjectId(current_user["id"])
+        user_id = ObjectId(get_current_user_id(credentials.credentials))
         request_obj_id = ObjectId(request_id)
+        
+        # Get database directly from app state
+        db = request.app.mongodb
         
         # Find and update the request
         result = await db.friend_requests.update_one(
@@ -247,49 +260,56 @@ async def reject_friend_request(
         return {"message": "Friend request rejected"}
         
     except Exception as e:
-        print(f"Error rejecting friend request: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/friends", response_model=List[UserWithJobPreference])
 async def get_friends(
-    current_user: dict = Depends(get_current_user),
-    db = Depends(get_database)
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
-    """Get user's friends list"""
+    """Get user's friends"""
     try:
-        user_id = ObjectId(current_user["id"])
+        user_id = ObjectId(get_current_user_id(credentials.credentials))
+        
+        # Get database directly from app state
+        db = request.app.mongodb
         
         # Get accepted friend relationships
-        friends_cursor = db.friend_requests.find({
+        friends = await db.friend_requests.find({
             "$or": [
                 {"sender_id": user_id, "status": "accepted"},
                 {"receiver_id": user_id, "status": "accepted"}
             ]
-        })
+        }).to_list(length=None)
         
-        friends = await friends_cursor.to_list(length=None)
-        
-        result = []
-        for friend_rel in friends:
-            # Determine the other user's ID
-            if str(friend_rel["sender_id"]) == str(user_id):
-                other_user_id = friend_rel["receiver_id"]
+        # Get friend user IDs
+        friend_ids = []
+        for friend in friends:
+            if str(friend["sender_id"]) == str(user_id):
+                friend_ids.append(friend["receiver_id"])
             else:
-                other_user_id = friend_rel["sender_id"]
-            
-            # Get other user's details
-            other_user = await db.users.find_one({"_id": other_user_id})
-            if other_user:
-                result.append(UserWithJobPreference(
-                    id=str(other_user["_id"]),
-                    name=other_user["name"],
-                    job_preference=other_user["job_preference"],
-                    location=other_user["location"],
-                    origin_country=other_user.get("origin_country"),
-                    is_friend=True,
-                    has_pending_request=False,
-                    request_sent_by_me=False
-                ))
+                friend_ids.append(friend["sender_id"])
+        
+        if not friend_ids:
+            return []
+        
+        # Get friend user details
+        users_cursor = db.users.find({"_id": {"$in": friend_ids}})
+        users = await users_cursor.to_list(length=None)
+        
+        # Build response
+        result = []
+        for user_doc in users:
+            result.append(UserWithJobPreference(
+                id=str(user_doc["_id"]),
+                name=user_doc["name"],
+                job_preference=user_doc["job_preference"],
+                location=user_doc["location"],
+                origin_country=user_doc.get("origin_country"),
+                is_friend=True,
+                has_pending_request=False,
+                request_sent_by_me=False
+            ))
         
         return result
         
@@ -299,15 +319,18 @@ async def get_friends(
 @router.post("/chat/message", response_model=ChatMessageResponse)
 async def send_message(
     message_data: ChatMessageCreate,
-    current_user: dict = Depends(get_current_user),
-    db = Depends(get_database)
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
-    """Send a chat message (only to friends)"""
+    """Send a message to a friend"""
     try:
-        sender_id = ObjectId(current_user["id"])
+        sender_id = ObjectId(get_current_user_id(credentials.credentials))
         receiver_id = ObjectId(message_data.receiver_id)
         
-        # Check if they are friends
+        # Get database directly from app state
+        db = request.app.mongodb
+        
+        # Verify they are friends
         friend_relationship = await db.friend_requests.find_one({
             "$or": [
                 {"sender_id": sender_id, "receiver_id": receiver_id, "status": "accepted"},
@@ -316,28 +339,28 @@ async def send_message(
         })
         
         if not friend_relationship:
-            raise HTTPException(status_code=403, detail="You can only message friends")
+            raise HTTPException(status_code=403, detail="Can only send messages to friends")
         
         # Create message
-        message = ChatMessage(
-            sender_id=PyObjectId(str(sender_id)),
-            receiver_id=PyObjectId(str(receiver_id)),
-            content=message_data.content
-        )
+        message = {
+            "sender_id": sender_id,
+            "receiver_id": receiver_id,
+            "content": message_data.content,
+            "created_at": datetime.utcnow()
+        }
         
-        result = await db.chat_messages.insert_one(message.dict(by_alias=True))
+        result = await db.messages.insert_one(message)
         
         # Get sender name
         sender = await db.users.find_one({"_id": sender_id})
         
         return ChatMessageResponse(
-            _id=str(result.inserted_id),
+            id=str(result.inserted_id),
             sender_id=str(sender_id),
             receiver_id=str(receiver_id),
             sender_name=sender["name"],
-            content=message.content,
-            created_at=message.created_at,
-            is_read=message.is_read
+            content=message_data.content,
+            created_at=message["created_at"]
         )
         
     except Exception as e:
@@ -346,15 +369,18 @@ async def send_message(
 @router.get("/chat/messages/{friend_id}", response_model=List[ChatMessageResponse])
 async def get_chat_messages(
     friend_id: str,
-    current_user: dict = Depends(get_current_user),
-    db = Depends(get_database)
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Get chat messages with a friend"""
     try:
-        user_id = ObjectId(current_user["id"])
+        user_id = ObjectId(get_current_user_id(credentials.credentials))
         friend_obj_id = ObjectId(friend_id)
         
-        # Check if they are friends
+        # Get database directly from app state
+        db = request.app.mongodb
+        
+        # Verify they are friends
         friend_relationship = await db.friend_requests.find_one({
             "$or": [
                 {"sender_id": user_id, "receiver_id": friend_obj_id, "status": "accepted"},
@@ -363,10 +389,10 @@ async def get_chat_messages(
         })
         
         if not friend_relationship:
-            raise HTTPException(status_code=403, detail="You can only view messages with friends")
+            raise HTTPException(status_code=403, detail="Can only view messages with friends")
         
         # Get messages between the two users
-        messages_cursor = db.chat_messages.find({
+        messages_cursor = db.messages.find({
             "$or": [
                 {"sender_id": user_id, "receiver_id": friend_obj_id},
                 {"sender_id": friend_obj_id, "receiver_id": user_id}
@@ -375,27 +401,19 @@ async def get_chat_messages(
         
         messages = await messages_cursor.to_list(length=None)
         
-        # Mark messages as read
-        await db.chat_messages.update_many(
-            {
-                "sender_id": friend_obj_id,
-                "receiver_id": user_id,
-                "is_read": False
-            },
-            {"$set": {"is_read": True}}
-        )
-        
+        # Build response
         result = []
         for msg in messages:
+            # Get sender name
             sender = await db.users.find_one({"_id": msg["sender_id"]})
+            
             result.append(ChatMessageResponse(
-                _id=str(msg["_id"]),
+                id=str(msg["_id"]),
                 sender_id=str(msg["sender_id"]),
                 receiver_id=str(msg["receiver_id"]),
                 sender_name=sender["name"],
                 content=msg["content"],
-                created_at=msg["created_at"],
-                is_read=msg["is_read"]
+                created_at=msg["created_at"]
             ))
         
         return result

@@ -4,32 +4,41 @@ from contextlib import asynccontextmanager
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 import os
+import logging
 
 from routes import auth, users, resumes, jobs, qualifications, friends, websocket, chat
 from database import get_database
 
 load_dotenv()
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     try:
-        # Use hardcoded connection string since .env file reading has issues
-        mongodb_uri = "mongodb+srv://new:123@cluster0.3c9nu6x.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+        # Get MongoDB URI from environment variable
+        mongodb_uri = os.getenv("MONGODB_URI")
+        if not mongodb_uri:
+            raise ValueError("MONGODB_URI environment variable is required")
         
-        print(f"Connecting to MongoDB with URI: {mongodb_uri.replace('new:123', '***:***')}")
+        logger.info("Connecting to MongoDB...")
         
         app.mongodb_client = AsyncIOMotorClient(mongodb_uri)  # type: ignore[attr-defined]
         
         # Test the connection
         await app.mongodb_client.admin.command('ping')  # type: ignore[attr-defined]
-        print("MongoDB connection test successful")
+        logger.info("MongoDB connection successful")
         
         app.mongodb = app.mongodb_client.immigrant_job_finder  # type: ignore[attr-defined]
-        print("Connected to MongoDB")
         
     except Exception as e:
-        print(f"Failed to connect to MongoDB: {e}")
+        logger.error(f"Failed to connect to MongoDB: {e}")
         raise
     
     yield
@@ -37,7 +46,7 @@ async def lifespan(app: FastAPI):
     # Shutdown
     if hasattr(app, 'mongodb_client'):
         app.mongodb_client.close()  # type: ignore[attr-defined]
-        print("Disconnected from MongoDB")
+        logger.info("Disconnected from MongoDB")
 
 app = FastAPI(
     title="ImmigrantJobFinder API",
@@ -46,12 +55,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS middleware
+# CORS middleware - configure for production
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 

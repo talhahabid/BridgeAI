@@ -1,23 +1,22 @@
-from fastapi import APIRouter, HTTPException, status, Depends, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from motor.motor_asyncio import AsyncIOMotorDatabase
-from bson import ObjectId
+import os
 from datetime import datetime
 from typing import Dict, Any, List
-
+from fastapi import APIRouter, HTTPException, status, Depends, Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from bson import ObjectId
+from motor.motor_asyncio import AsyncIOMotorDatabase
+from typing import Dict, Any, List
 
 from utils.auth import get_current_user_id
-from utils.gemini_service import GeminiService
+from utils.chat_service import ChatService
 from database import get_database
 from dotenv import load_dotenv
-import os
 
+# Load environment variables
 load_dotenv()
-
 
 router = APIRouter()
 security = HTTPBearer()
-gemini_service = GeminiService()
 
 # Mock qualification pathways data
 QUALIFICATION_PATHWAYS = {
@@ -239,111 +238,13 @@ async def get_available_job_types(
             detail=f"Error retrieving job types: {str(e)}"
         )
 
-@router.post("/generate")
-async def generate_qualification_path(
-    request: Request,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
-):
-    """Generate a qualification path for the current user using Gemini AI."""
-    try:
-        user_id = get_current_user_id(credentials.credentials)
-        
-        # Get database directly from app state
-        db = request.app.mongodb
-        
-        # Get user data
-        user = await db.users.find_one({"_id": ObjectId(user_id)})
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-        
-        # Check if user has required data
-        if not user.get('job_preference'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Job preference is required to generate qualification path"
-            )
-        
-        if not user.get('location'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Location (province) is required to generate qualification path"
-            )
-        
-        # Prepare user data for Gemini
-        user_data = {
-            'job_preference': user.get('job_preference', ''),
-            'origin_country': user.get('origin_country', ''),
-            'location': user.get('location', ''),
-            'resume_text': user.get('resume_text', ''),
-            'resume_keywords': user.get('resume_keywords', [])
-        }
-        
-        # Check if Gemini API key is available
-        
-        gemini_api_key = os.getenv("GEMINI_API_KEY")
-        
-        if not gemini_api_key:
-            # Generate fallback qualification path without Gemini
-            result = generate_fallback_qualification_path(user_data)
-        else:
-            # Generate qualification path using Gemini
-            result = await gemini_service.generate_qualification_path(user_data)
-            
-            # If Gemini fails, fall back to the basic method
-            if not result.get('success'):
-                print(f"Gemini API failed: {result.get('error')}")
-                result = generate_fallback_qualification_path(user_data)
-        
-        if not result.get('success'):
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to generate qualification path: {result.get('error', 'Unknown error')}"
-            )
-        
-        # Save the qualification path to the user's profile
-        qualification_data = {
-            'qualification_path': result['qualification_path'],
-            'generated_at': result['generated_at'],
-            'raw_response': result.get('raw_response', ''),
-            'progress': {
-                'completed_steps': [],
-                'total_steps': len(result['qualification_path'].get('steps', [])),
-                'completion_percentage': 0,
-                'started_at': datetime.utcnow().isoformat(),
-                'last_updated': datetime.utcnow().isoformat()
-            }
-        }
-        
-        # Update user with qualification path
-        await db.users.update_one(
-            {"_id": ObjectId(user_id)},
-            {"$set": {"qualification_path": qualification_data}}
-        )
-        
-        return {
-            "message": "Qualification path generated successfully",
-            "qualification_path": result['qualification_path'],
-            "progress": qualification_data['progress']
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error generating qualification path: {str(e)}"
-        )
-
 def generate_fallback_qualification_path(user_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Generate a fallback qualification path when Gemini API is not available."""
+    """Generate a comprehensive qualification path without external API dependencies."""
     
     job_preference = user_data.get('job_preference', '').lower()
     location = user_data.get('location', 'Canada')
     
-    # Create a basic qualification path based on common patterns
+    # Create a comprehensive qualification path based on common patterns
     if 'doctor' in job_preference or 'physician' in job_preference or 'medical' in job_preference:
         qualification_path = {
             "job_title": "Medical Doctor",
@@ -436,6 +337,98 @@ def generate_fallback_qualification_path(user_data: Dict[str, Any]) -> Dict[str,
             "important_notes": ["Join engineering associations early", "Network with other engineers", "Keep detailed work records"],
             "regulatory_bodies": ["Provincial engineering associations"]
         }
+    elif 'nurse' in job_preference or 'nursing' in job_preference:
+        qualification_path = {
+            "job_title": "Registered Nurse",
+            "province": location,
+            "estimated_total_time": "1-3 years",
+            "steps": [
+                {
+                    "step_number": 1,
+                    "title": "Credential Assessment",
+                    "description": "Have your nursing credentials assessed by the National Nursing Assessment Service",
+                    "estimated_duration": "2-4 months",
+                    "requirements": ["Nursing degree/diploma", "Transcripts", "License verification"],
+                    "cost_estimate": "CAD $650",
+                    "resources": ["NNAS", "Provincial nursing colleges"],
+                    "notes": "Required for all internationally educated nurses"
+                },
+                {
+                    "step_number": 2,
+                    "title": "Language Proficiency",
+                    "description": "Take required language tests (IELTS or CELPIP)",
+                    "estimated_duration": "1-2 months",
+                    "requirements": ["Study materials", "Test registration"],
+                    "cost_estimate": "CAD $300-400",
+                    "resources": ["IELTS", "CELPIP"],
+                    "notes": "Most provinces require CLB 7 or higher"
+                },
+                {
+                    "step_number": 3,
+                    "title": "NCLEX-RN Exam",
+                    "description": "Take the National Council Licensure Examination for Registered Nurses",
+                    "estimated_duration": "3-6 months",
+                    "requirements": ["Study materials", "Exam registration"],
+                    "cost_estimate": "CAD $360",
+                    "resources": ["NCLEX study guides", "Practice exams"],
+                    "notes": "Computer-adaptive exam testing nursing knowledge"
+                },
+                {
+                    "step_number": 4,
+                    "title": "Provincial Registration",
+                    "description": "Apply for registration with the provincial nursing college",
+                    "estimated_duration": "1-2 months",
+                    "requirements": ["Completed exams", "Application materials"],
+                    "cost_estimate": "CAD $200-400",
+                    "resources": ["Provincial nursing colleges"],
+                    "notes": "Requirements vary by province"
+                }
+            ],
+            "summary": "Path to become a registered nurse in Canada",
+            "important_notes": ["Start NNAS assessment early", "Prepare thoroughly for NCLEX", "Research provincial requirements"],
+            "regulatory_bodies": ["National Nursing Assessment Service", "Provincial nursing colleges"]
+        }
+    elif 'teacher' in job_preference or 'education' in job_preference:
+        qualification_path = {
+            "job_title": "Teacher",
+            "province": location,
+            "estimated_total_time": "1-2 years",
+            "steps": [
+                {
+                    "step_number": 1,
+                    "title": "Credential Evaluation",
+                    "description": "Have your teaching credentials evaluated by the provincial teacher certification body",
+                    "estimated_duration": "2-3 months",
+                    "requirements": ["Teaching degree", "Transcripts", "Teaching experience"],
+                    "cost_estimate": "CAD $200-400",
+                    "resources": ["Provincial teacher certification bodies", "WES Canada"],
+                    "notes": "Requirements vary significantly by province"
+                },
+                {
+                    "step_number": 2,
+                    "title": "Language Proficiency",
+                    "description": "Take required language tests (IELTS or CELPIP)",
+                    "estimated_duration": "1-2 months",
+                    "requirements": ["Study materials", "Test registration"],
+                    "cost_estimate": "CAD $300-400",
+                    "resources": ["IELTS", "CELPIP"],
+                    "notes": "Most provinces require CLB 7 or higher"
+                },
+                {
+                    "step_number": 3,
+                    "title": "Teacher Certification",
+                    "description": "Apply for teacher certification in your province",
+                    "estimated_duration": "3-6 months",
+                    "requirements": ["Completed evaluation", "Language tests", "Application"],
+                    "cost_estimate": "CAD $100-300",
+                    "resources": ["Provincial teacher certification bodies"],
+                    "notes": "May require additional courses or exams"
+                }
+            ],
+            "summary": "Path to become a certified teacher in Canada",
+            "important_notes": ["Research provincial requirements early", "Network with other teachers", "Consider supply teaching"],
+            "regulatory_bodies": ["Provincial teacher certification bodies"]
+        }
     else:
         # Generic path for other professions
         qualification_path = {
@@ -483,8 +476,80 @@ def generate_fallback_qualification_path(user_data: Dict[str, Any]) -> Dict[str,
         "success": True,
         "qualification_path": qualification_path,
         "generated_at": datetime.utcnow().isoformat(),
-        "raw_response": "Generated using fallback method (Gemini API not available)"
+        "raw_response": "Generated using comprehensive qualification path system"
     }
+
+@router.post("/generate")
+async def generate_qualification_path(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Generate a personalized qualification path for the current user."""
+    try:
+        user_id = get_current_user_id(credentials.credentials)
+        db = await get_database(request)
+        
+        # Get user data
+        user = await db.users.find_one({"_id": ObjectId(user_id)})
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        # Prepare user data for qualification path generation
+        user_data = {
+            "name": user.get("name", ""),
+            "job_preference": user.get("job_preference", ""),
+            "location": user.get("location", ""),
+            "origin_country": user.get("origin_country", ""),
+            "resume_text": user.get("resume_text", ""),
+            "resume_keywords": user.get("resume_keywords", [])
+        }
+        
+        # If Gemini fails, fall back to the basic method
+        if not result.get('success'):
+            result = generate_fallback_qualification_path(user_data)
+        
+        if not result.get('success'):
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to generate qualification path: {result.get('error', 'Unknown error')}"
+            )
+        
+        # Save the qualification path to the user's profile
+        qualification_data = {
+            'qualification_path': result['qualification_path'],
+            'generated_at': result['generated_at'],
+            'raw_response': result.get('raw_response', ''),
+            'progress': {
+                'completed_steps': [],
+                'total_steps': len(result['qualification_path'].get('steps', [])),
+                'completion_percentage': 0,
+                'started_at': datetime.utcnow().isoformat(),
+                'last_updated': datetime.utcnow().isoformat()
+            }
+        }
+        
+        # Update user with qualification path
+        await db.users.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": {"qualification_path": qualification_data}}
+        )
+        
+        return {
+            "message": "Qualification path generated successfully",
+            "qualification_path": result['qualification_path'],
+            "progress": qualification_data['progress']
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error generating qualification path: {str(e)}"
+        )
 
 @router.get("/path")
 async def get_qualification_path(

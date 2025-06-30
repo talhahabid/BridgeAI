@@ -1,10 +1,15 @@
 import json
 import asyncio
+import logging
 from typing import Dict, Set, Optional
 from fastapi import WebSocket, WebSocketDisconnect
 from bson import ObjectId
 from utils.chat_service import ChatService
 from database import get_database_direct
+from datetime import datetime
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 class ConnectionManager:
     def __init__(self):
@@ -26,21 +31,21 @@ class ConnectionManager:
         await websocket.accept()
         self.active_connections[user_id] = websocket
         self.user_chat_rooms[user_id] = set()
-        print(f"User {user_id} connected")
+        logger.info(f"User {user_id} connected")
 
     def disconnect(self, user_id: str):
         if user_id in self.active_connections:
             del self.active_connections[user_id]
         if user_id in self.user_chat_rooms:
             del self.user_chat_rooms[user_id]
-        print(f"User {user_id} disconnected")
+        logger.info(f"User {user_id} disconnected")
 
     async def send_personal_message(self, message: dict, user_id: str):
         if user_id in self.active_connections:
             try:
                 await self.active_connections[user_id].send_text(json.dumps(message))
             except Exception as e:
-                print(f"Error sending message to {user_id}: {e}")
+                logger.error(f"Error sending message to {user_id}: {e}")
                 self.disconnect(user_id)
 
     async def send_chat_message(self, message: dict, sender_id: str, receiver_id: str):
@@ -96,7 +101,7 @@ class ConnectionManager:
                 await self.send_chat_message(message_data, sender_id, receiver_id)
             
         except Exception as e:
-            print(f"Error handling chat message: {e}")
+            logger.error(f"Error handling chat message: {e}")
 
     async def handle_mark_read(self, data: dict, user_id: str):
         """Handle mark as read request"""
@@ -119,7 +124,7 @@ class ConnectionManager:
             await self.send_personal_message(read_notification, other_user_id)
             
         except Exception as e:
-            print(f"Error handling mark read: {e}")
+            logger.error(f"Error handling mark read: {e}")
 
     def get_online_users(self) -> Set[str]:
         return set(self.active_connections.keys())

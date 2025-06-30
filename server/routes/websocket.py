@@ -1,12 +1,16 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, Request
 import json
 from datetime import datetime
+import logging
 
 from websocket_manager import manager
 from utils.auth import verify_token
 from utils.chat_service import ChatService
 from models.chat import Message
 from database import get_database
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -41,7 +45,7 @@ async def websocket_endpoint(
     except WebSocketDisconnect:
         manager.disconnect(user_id)
     except Exception as e:
-        print(f"WebSocket error: {e}")
+        logger.error(f"WebSocket error: {e}")
         manager.disconnect(user_id)
 
 async def handle_typing_indicator(message_data: dict, sender_id: str):
@@ -63,7 +67,7 @@ async def handle_typing_indicator(message_data: dict, sender_id: str):
         await manager.send_personal_message(typing_message, receiver_id)
         
     except Exception as e:
-        print(f"Error handling typing indicator: {e}")
+        logger.error(f"Error handling typing indicator: {e}")
 
 @router.get("/online-users")
 async def get_online_users():

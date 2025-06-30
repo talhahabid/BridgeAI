@@ -1,10 +1,9 @@
 from fastapi import APIRouter, HTTPException, status, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from motor.motor_asyncio import AsyncIOMotorDatabase
 from datetime import timedelta
-import os
 
-from models.user import UserCreate, UserLogin, UserResponse
+
+from models.user import UserCreate, UserLogin
 from utils.auth import get_password_hash, verify_password, create_access_token
 from database import get_database
 
@@ -15,25 +14,16 @@ security = HTTPBearer()
 async def signup(user_data: UserCreate, request: Request):
     """Register a new user."""
     try:
-        print(f"Starting signup for email: {user_data.email}")
-        
         db = await get_database(request)
-        print(f"Database object: {db}")
-        
         # Check if user already exists
         existing_user = await db.users.find_one({"email": user_data.email})
-        print(f"Existing user check result: {existing_user}")
-        
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email already registered"
             )
-        
         # Hash password
         hashed_password = get_password_hash(user_data.password)
-        print("Password hashed successfully")
-        
         # Create user document
         user_doc = {
             "name": user_data.name,
@@ -45,34 +35,23 @@ async def signup(user_data: UserCreate, request: Request):
             "resume_text": None,
             "resume_filename": None
         }
-        print(f"User document created: {user_doc}")
-        
         # Insert user into database
         result = await db.users.insert_one(user_doc)
-        print(f"User inserted with ID: {result.inserted_id}")
-        
         # Create access token
         access_token = create_access_token(
             data={"sub": str(result.inserted_id)},
             expires_delta=timedelta(minutes=30)
         )
-        print("Access token created successfully")
-        
         return {
             "access_token": access_token,
             "token_type": "bearer",
             "user_id": str(result.inserted_id),
             "message": "User created successfully"
         }
-        
     except HTTPException:
         # Re-raise HTTP exceptions as-is
         raise
     except Exception as e:
-        print(f"Error in signup: {str(e)}")
-        print(f"Error type: {type(e)}")
-        import traceback
-        print(f"Full traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error creating user: {str(e)}"

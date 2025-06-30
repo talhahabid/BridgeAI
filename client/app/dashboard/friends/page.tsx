@@ -50,6 +50,8 @@ export default function FriendsPage() {
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([])
   const [totalUnreadCount, setTotalUnreadCount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
+  const [searchField, setSearchField] = useState<'name' | 'origin_country' | 'location' | 'job_preference'>('name')
+  const [searchValue, setSearchValue] = useState('')
   const router = useRouter()
 
   useEffect(() => {
@@ -311,6 +313,27 @@ export default function FriendsPage() {
               </h2>
               <p className="text-slate-400">Connect with people who share your career interests</p>
             </div>
+            {/* Search Bar */}
+            <div className="flex flex-col md:flex-row items-center gap-4 mb-8">
+              <select
+                value={searchField}
+                onChange={e => setSearchField(e.target.value as any)}
+                className="px-4 py-2 rounded-lg border border-slate-600 bg-slate-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="name">Name</option>
+                <option value="origin_country">Country</option>
+                <option value="location">Province</option>
+                <option value="job_preference">Job</option>
+              </select>
+              <input
+                type="text"
+                value={searchValue}
+                onChange={e => setSearchValue(e.target.value)}
+                placeholder={`Search by ${searchField.replace('_', ' ')}`}
+                className="flex-1 px-4 py-2 rounded-lg border border-slate-600 bg-slate-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            {/* Filtered User List */}
             {discoverUsers.length === 0 ? (
               <div className="text-center py-16">
                 <div className="bg-slate-800/30 backdrop-blur-xl rounded-2xl p-12 border border-slate-700/50 max-w-md mx-auto">
@@ -324,66 +347,76 @@ export default function FriendsPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {discoverUsers.map((user) => (
-                  <div key={user.id} className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 hover:border-blue-500/30 transition-all duration-200 group">
-                    <div className="flex items-center mb-6">
-                      <div className="w-14 h-14 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center">
-                        <span className="text-white font-bold text-lg">{user.name.charAt(0)}</span>
-                      </div>
-                      <div className="ml-4 flex-1">
-                        <h3 className="text-lg font-semibold text-white mb-1">{user.name}</h3>
-                        <p className="text-sm text-slate-400 bg-slate-700/50 px-3 py-1 rounded-full inline-block">
-                          {user.job_preference}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 mb-6">
-                      <div className="flex items-center text-sm text-slate-300">
-                        <div className="p-2 bg-slate-700/50 rounded-lg mr-3">
-                          <MapPin className="w-4 h-4 text-blue-400" />
+                {discoverUsers
+                  .filter(user => {
+                    if (!searchValue.trim()) return true;
+                    const value = searchValue.trim().toLowerCase();
+                    if (searchField === 'name') return user.name.toLowerCase().includes(value);
+                    if (searchField === 'origin_country') return (user.origin_country || '').toLowerCase().includes(value);
+                    if (searchField === 'location') return (user.location || '').toLowerCase().includes(value);
+                    if (searchField === 'job_preference') return (user.job_preference || '').toLowerCase().includes(value);
+                    return true;
+                  })
+                  .map((user) => (
+                    <div key={user.id} className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 hover:border-blue-500/30 transition-all duration-200 group">
+                      <div className="flex items-center mb-6">
+                        <div className="w-14 h-14 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center">
+                          <span className="text-white font-bold text-lg">{user.name.charAt(0)}</span>
                         </div>
-                        <span>{user.location}</span>
+                        <div className="ml-4 flex-1">
+                          <h3 className="text-lg font-semibold text-white mb-1">{user.name}</h3>
+                          <p className="text-sm text-slate-400 bg-slate-700/50 px-3 py-1 rounded-full inline-block">
+                            {user.job_preference}
+                          </p>
+                        </div>
                       </div>
-                      {user.origin_country && (
+
+                      <div className="space-y-3 mb-6">
                         <div className="flex items-center text-sm text-slate-300">
                           <div className="p-2 bg-slate-700/50 rounded-lg mr-3">
-                            <Globe className="w-4 h-4 text-purple-400" />
+                            <MapPin className="w-4 h-4 text-blue-400" />
                           </div>
-                          <span>{user.origin_country}</span>
+                          <span>{user.location}</span>
                         </div>
-                      )}
-                    </div>
+                        {user.origin_country && (
+                          <div className="flex items-center text-sm text-slate-300">
+                            <div className="p-2 bg-slate-700/50 rounded-lg mr-3">
+                              <Globe className="w-4 h-4 text-purple-400" />
+                            </div>
+                            <span>{user.origin_country}</span>
+                          </div>
+                        )}
+                      </div>
 
-                    <div className="flex space-x-3">
-                      {user.is_friend ? (
-                        <button
-                          onClick={() => openChat(user.id, user.name)}
-                          className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-3 rounded-xl text-sm font-medium hover:from-green-600 hover:to-emerald-700 transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg"
-                        >
-                          <MessageCircle className="w-4 h-4" />
-                          <span>Message</span>
-                        </button>
-                      ) : user.has_pending_request ? (
-                        <button className="flex-1 bg-slate-700/50 text-slate-400 px-4 py-3 rounded-xl text-sm font-medium cursor-not-allowed border border-slate-600/50">
-                          Request Pending
-                        </button>
-                      ) : user.request_sent_by_me ? (
-                        <button className="flex-1 bg-slate-700/50 text-slate-400 px-4 py-3 rounded-xl text-sm font-medium cursor-not-allowed border border-slate-600/50">
-                          Request Sent
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => sendFriendRequest(user.id)}
-                          className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-3 rounded-xl text-sm font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg"
-                        >
-                          <UserPlus className="w-4 h-4" />
-                          <span>Connect</span>
-                        </button>
-                      )}
+                      <div className="flex space-x-3">
+                        {user.is_friend ? (
+                          <button
+                            onClick={() => openChat(user.id, user.name)}
+                            className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-3 rounded-xl text-sm font-medium hover:from-green-600 hover:to-emerald-700 transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                            <span>Message</span>
+                          </button>
+                        ) : user.has_pending_request ? (
+                          <button className="flex-1 bg-slate-700/50 text-slate-400 px-4 py-3 rounded-xl text-sm font-medium cursor-not-allowed border border-slate-600/50">
+                            Request Pending
+                          </button>
+                        ) : user.request_sent_by_me ? (
+                          <button className="flex-1 bg-slate-700/50 text-slate-400 px-4 py-3 rounded-xl text-sm font-medium cursor-not-allowed border border-slate-600/50">
+                            Request Sent
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => sendFriendRequest(user.id)}
+                            className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-3 rounded-xl text-sm font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg"
+                          >
+                            <UserPlus className="w-4 h-4" />
+                            <span>Connect</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             )}
           </div>

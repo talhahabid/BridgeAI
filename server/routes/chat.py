@@ -1,11 +1,9 @@
 from fastapi import APIRouter, HTTPException, Depends, Request, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from typing import List, Optional
 from bson import ObjectId
 
 from utils.auth import get_current_user_id
 from utils.chat_service import ChatService
-from models.chat import ChatMessageResponse, ChatSessionResponse
 from database import get_database
 
 router = APIRouter()
@@ -38,7 +36,6 @@ async def get_chat_messages(
         }
         
     except Exception as e:
-        print(f"Error getting messages: {e}")
         raise HTTPException(status_code=500, detail=f"Error getting messages: {str(e)}")
 
 @router.get("/sessions")
@@ -64,7 +61,6 @@ async def get_chat_sessions(
         }
         
     except Exception as e:
-        print(f"Error getting chat sessions: {e}")
         raise HTTPException(status_code=500, detail=f"Error getting chat sessions: {str(e)}")
 
 @router.post("/mark-read/{other_user_id}")
@@ -91,7 +87,6 @@ async def mark_messages_as_read(
         }
         
     except Exception as e:
-        print(f"Error marking messages as read: {e}")
         raise HTTPException(status_code=500, detail=f"Error marking messages as read: {str(e)}")
 
 @router.get("/unread-count")
@@ -117,7 +112,6 @@ async def get_unread_count(
         }
         
     except Exception as e:
-        print(f"Error getting unread count: {e}")
         raise HTTPException(status_code=500, detail=f"Error getting unread count: {str(e)}")
 
 @router.delete("/messages/{message_id}")
@@ -153,5 +147,4 @@ async def delete_message(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error deleting message: {e}")
         raise HTTPException(status_code=500, detail=f"Error deleting message: {str(e)}") 
