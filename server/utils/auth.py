@@ -1,21 +1,24 @@
-from datetime import datetime, timedelta
-from typing import Optional
-from jose import JWTError, jwt
-from passlib.context import CryptContext
-from fastapi import HTTPException, status, Depends, Request
 import os
 from dotenv import load_dotenv
-
-# Load environment variables
+import jwt
+from datetime import datetime, timedelta, timezone
+from typing import Optional
+from passlib.context import CryptContext
+import logging
 load_dotenv()
+# Configure logging
+logger = logging.getLogger(__name__)
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# JWT settings
-SECRET_KEY = os.getenv("JWT_SECRET", "your-secret-key-change-in-production")
+# JWT Configuration
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+SECRET_KEY = os.getenv("JWT_SECRET")
+if not SECRET_KEY:
+    raise ValueError("JWT_SECRET environment variable is required for production")
+
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash."""
@@ -29,10 +32,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Create a JWT access token."""
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    
+        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -41,33 +43,30 @@ def verify_token(token: str) -> Optional[str]:
     """Verify and decode a JWT token."""
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: Optional[str] = payload.get("sub")
+        user_id: str = payload.get("sub")
         if user_id is None:
             return None
         return user_id
-    except JWTError:
+    except jwt.PyJWTError as e:
+        logger.warning(f"JWT verification failed: {e}")
         return None
 
 def get_current_user_id(token: str) -> str:
     """Get current user ID from token, raising exception if invalid."""
     user_id = verify_token(token)
     if user_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise ValueError("Invalid token")
     return user_id
 
-def get_current_user(request: Request):
-    """FastAPI dependency to get the current user from the Authorization header."""
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing or invalid Authorization header",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    token = auth_header.split(" ", 1)[1]
-    user_id = get_current_user_id(token)
-    return {"id": user_id} 
+def get_current_user(credentials: str) -> dict:
+    """Get current user from credentials."""
+    if not credentials:
+        raise ValueError("No credentials provided")
+    
+    try:
+        token = credentials.split(" ", 1)[1]
+        user_id = get_current_user_id(token)
+        return {"id": user_id}
+    except (IndexError, ValueError) as e:
+        logger.error(f"Authentication error: {e}")
+        raise ValueError("Invalid authentication credentials") 

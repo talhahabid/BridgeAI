@@ -15,25 +15,34 @@ import time
 import httpx
 import subprocess
 import json
+from datetime import datetime
+import logging
 
 from utils.auth import get_current_user_id, get_current_user
 from utils.pdf_parser import resume_parser
-from utils.groq_service import groq_service
 from utils.pdf_editor import pdf_editor
 from database import get_database
 from models.user import UserResponse
 
 router = APIRouter()
 security = HTTPBearer()
+logger = logging.getLogger("ats_eval")
 
 # Check if Groq service is available
 def get_groq_service():
-    if groq_service is None:
+    try:
+        from utils.groq_service import groq_service
+        if groq_service is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="AI document generation service is not available. Please set GROQ_API_KEY environment variable."
+            )
+        return groq_service
+    except ImportError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="AI document generation service is not available. Please set GROQ_API_KEY environment variable."
+            detail="AI document generation service is not available."
         )
-    return groq_service
 
 @router.post("/upload")
 async def upload_resume(
@@ -46,8 +55,8 @@ async def upload_resume(
         # Verify user
         user_id = get_current_user_id(credentials.credentials)
         
-        # Get database
-        db = await get_database(request)
+        # Get database directly from app state
+        db = request.app.mongodb
         
         # Check file type
         if not file.filename or not file.filename.lower().endswith('.pdf'):
@@ -88,13 +97,20 @@ async def upload_resume(
         if not isinstance(structured_content, dict):
             structured_content = {}
         
-        # Update user's resume information - now including the PDF file
+        # Save PDF to disk and store path
+        resume_dir = os.path.join(os.getcwd(), "server", "resumes")
+        os.makedirs(resume_dir, exist_ok=True)
+        resume_path = os.path.join(resume_dir, f"{user_id}_{file.filename}")
+        with open(resume_path, "wb") as f:
+            f.write(file_content)
+
+        # Update user's resume information - now including the PDF file path
         update_data = {
             "resume_text": clean_text,
             "resume_filename": file.filename,
             "resume_structured": structured_content,
             "resume_keywords": keywords,
-            "resume_file": file_content  # Store the actual PDF file as binary data
+            "resume_file_path": resume_path  # Save the path!
         }
         
         await db.users.update_one(
@@ -128,8 +144,8 @@ async def get_resume_content(
         # Verify user
         user_id = get_current_user_id(credentials.credentials)
         
-        # Get database
-        db = await get_database(request)
+        # Get database directly from app state
+        db = request.app.mongodb
         
         # Get user's resume data
         user = await db.users.find_one({"_id": ObjectId(user_id)})
@@ -165,8 +181,8 @@ async def remove_resume(
         # Verify user
         user_id = get_current_user_id(credentials.credentials)
         
-        # Get database
-        db = await get_database(request)
+        # Get database directly from app state
+        db = request.app.mongodb
         
         # Remove resume data - including the PDF file
         update_data = {
@@ -174,7 +190,7 @@ async def remove_resume(
             "resume_filename": None,
             "resume_structured": None,
             "resume_keywords": None,
-            "resume_file": None  # Also remove the stored PDF file
+            "resume_file_path": None  # Also remove the stored PDF file path
         }
         
         result = await db.users.update_one(
@@ -200,14 +216,18 @@ async def remove_resume(
 
 @router.post("/ats-evaluate")
 async def evaluate_resume_ats(
+    request: Request,
     resume_file: UploadFile = File(...),
     job_description: str = Form(...),
-    current_user: UserResponse = Depends(get_current_user)
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """
     Evaluate resume against job description using ATS scoring
     """
     try:
+        # Verify user
+        user_id = get_current_user_id(credentials.credentials)
+        
         # Validate file type
         if not resume_file.filename or not resume_file.filename.lower().endswith('.pdf'):
             raise HTTPException(status_code=400, detail="Only PDF files are supported")
@@ -219,26 +239,20 @@ async def evaluate_resume_ats(
             temp_file_path = temp_file.name
         
         try:
-            # Initialize Chrome driver
+            # Initialize Chrome driver with headless mode
             chrome_driver_path = os.path.join(os.getcwd(), "chrome_driver", "chromedriver.exe")
             if not os.path.exists(chrome_driver_path):
-                raise Exception("Chrome driver not found")
+                raise HTTPException(status_code=500, detail="Chrome driver not found. ATS evaluation cannot proceed.")
             
             # Configure Chrome options for headless operation
             chrome_options = webdriver.ChromeOptions()
-            chrome_options.add_argument("--headless")  # Run in background
-            chrome_options.add_argument("--no-sandbox")  # Required for some environments
-            chrome_options.add_argument("--disable-dev-shm-usage")  # Disable shared memory
-            chrome_options.add_argument("--disable-gpu")  # Disable GPU acceleration
-            chrome_options.add_argument("--window-size=1920,1080")  # Set window size
-            chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")  # Set user agent
-            chrome_options.add_argument("--disable-extensions")  # Disable extensions
-            chrome_options.add_argument("--disable-plugins")  # Disable plugins
-            chrome_options.add_argument("--disable-images")  # Disable images for faster loading
-            chrome_options.add_argument("--log-level=3")  # Minimize logging
-            chrome_options.add_experimental_option("excludeSwitches", ["enable-logging"])  # Disable logging
-            chrome_options.add_experimental_option('useAutomationExtension', False)  # Disable automation extension
-            
+            chrome_options.add_argument("--headless")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-dev-shm-usage")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--window-size=1920,1080")
+            chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+
             service = Service(chrome_driver_path)
             driver = webdriver.Chrome(service=service, options=chrome_options)
             
@@ -286,70 +300,53 @@ async def evaluate_resume_ats(
                 driver.quit()
                 
         except Exception as web_error:
-            # print(f"Web scraping failed: {str(web_error)}")
-            raise HTTPException(status_code=500, detail=f"Web scraping failed: {str(web_error)}")
+            raise HTTPException(status_code=500, detail=f"ATS evaluation failed: {str(web_error)}")
             
+    except HTTPException:
+        raise
     except Exception as e:
+        raise HTTPException(status_code=500, detail=f"ATS evaluation failed: {str(e)}")
+    finally:
         # Clean up temporary file if it exists
         if 'temp_file_path' in locals():
             try:
                 os.unlink(temp_file_path)
             except:
                 pass
-        
-        raise HTTPException(status_code=500, detail=f"ATS evaluation failed: {str(e)}")
 
-async def perform_basic_ats_analysis(resume_file: UploadFile, job_description: str, temp_file_path: str) -> dict:
-    """Perform basic ATS analysis when web scraping fails"""
+@router.get("/ats-result/{user_id}")
+async def get_ats_result(
+    user_id: str,
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get the latest ATS evaluation result for a user"""
     try:
-        # Read the resume content
-        with open(temp_file_path, 'rb') as f:
-            resume_content = f.read()
-        
-        # Parse the PDF to extract text
-        parse_result = resume_parser.extract_text_from_pdf(resume_content)
-        resume_text = str(parse_result.get('full_text', '')) if parse_result.get('parsed_successfully') else ''
-        
-        # Basic keyword matching
-        job_keywords = set(job_description.lower().split())  # type: ignore
-        resume_keywords = set(resume_text.lower().split())
-        
-        # Calculate basic match percentage
-        common_keywords = job_keywords.intersection(resume_keywords)
-        match_percentage = len(common_keywords) / len(job_keywords) * 100 if job_keywords else 0
-        
-        # Generate basic feedback
-        feedback = [
-            f"Basic ATS Analysis Results:",
-            f"Keyword Match: {len(common_keywords)} out of {len(job_keywords)} keywords found",
-            f"Match Percentage: {match_percentage:.1f}%",
-            "",
-            "Recommendations:",
-            "• Ensure your resume includes relevant keywords from the job description",
-            "• Use industry-standard terminology",
-            "• Include specific skills and technologies mentioned in the job posting",
-            "• Keep formatting simple and ATS-friendly",
-            "• Avoid graphics, tables, or complex layouts"
-        ]
-        
-        if common_keywords:
-            feedback.append(f"• Found keywords: {', '.join(list(common_keywords)[:10])}")
-        
+        logger.info(f"Fetching ATS result for user {user_id}")
+        current_user_id = get_current_user_id(credentials.credentials)
+        if current_user_id != user_id:
+            logger.warning(f"User {current_user_id} not authorized to access ATS result for {user_id}")
+            raise HTTPException(status_code=403, detail="Not authorized to access this result")
+        db = request.app.mongodb
+        result = await db.ats_results.find_one(
+            {"user_id": ObjectId(user_id)},
+            sort=[("created_at", -1)]
+        )
+        if not result:
+            logger.info(f"No ATS result found for user {user_id}")
+            raise HTTPException(status_code=404, detail="No ATS evaluation result found")
+        logger.info(f"ATS result found for user {user_id}")
         return {
             "success": True,
-            "feedback": feedback,
-            "resume_filename": resume_file.filename,
-            "job_description_preview": job_description[:100] + "..." if len(job_description) > 100 else job_description,
-            "match_percentage": round(match_percentage, 1),
-            "analysis_type": "basic"
+            "result": result["result"],
+            "created_at": result["created_at"],
+            "status": result["status"]
         }
-        
-    finally:
-        # Clean up temporary file
-        try:
-            os.unlink(temp_file_path)
-        except:
-            pass
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving ATS result for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving ATS result: {str(e)}")
 
 @router.get("/download")
 async def download_resume(
@@ -361,8 +358,8 @@ async def download_resume(
         # Verify user
         user_id = get_current_user_id(credentials.credentials)
         
-        # Get database
-        db = await get_database(request)
+        # Get database directly from app state
+        db = request.app.mongodb
         
         # Get user's resume data
         user = await db.users.find_one({"_id": ObjectId(user_id)})
@@ -372,9 +369,9 @@ async def download_resume(
                 detail="No resume found"
             )
         
-        # Get the stored PDF file
-        resume_file = user.get("resume_file")
-        if not resume_file:
+        # Get the stored PDF file path
+        resume_file_path = user.get("resume_file_path")
+        if not resume_file_path or not os.path.exists(resume_file_path):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Resume file not found"
@@ -382,13 +379,9 @@ async def download_resume(
         
         filename = user.get("resume_filename", "resume.pdf")
         
-        # Create a temporary file with the PDF content
-        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.pdf') as temp_file:
-            temp_file.write(resume_file)
-            temp_file_path = temp_file.name
-        
+        # Return the PDF file directly
         return FileResponse(
-            path=temp_file_path,
+            path=resume_file_path,
             filename=filename,
             media_type='application/pdf'
         )
@@ -415,8 +408,8 @@ async def generate_tailored_documents(
         # Verify user
         user_id = get_current_user_id(credentials.credentials)
         
-        # Get database
-        db = await get_database(request)
+        # Get database directly from app state
+        db = request.app.mongodb
         
         # Get user's resume data
         user = await db.users.find_one({"_id": ObjectId(user_id)})
@@ -479,8 +472,6 @@ async def generate_cover_letter(user_info: Dict[str, Any], job_description: str)
         response = await get_groq_service().generate_cover_letter(user_info, job_description)
         return response
     except Exception as e:
-        # print(f"Error generating cover letter: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error generating cover letter: {str(e)}")
         # Fallback cover letter template
         return f"""
 Dear Hiring Manager,
@@ -504,8 +495,6 @@ async def generate_optimized_resume(user_info: Dict[str, Any], job_description: 
         response = await get_groq_service().generate_optimized_resume(user_info, job_description)
         return response
     except Exception as e:
-        # print(f"Error generating optimized resume: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error generating optimized resume: {str(e)}")
         # Fallback optimized resume
         return f"""
 {user_info['name'].upper()}
@@ -541,8 +530,6 @@ async def create_latex_pdf(content: str, document_type: str, user_name: str) -> 
         return pdf_path
         
     except Exception as e:
-        # print(f"Error creating PDF: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error creating PDF: {str(e)}")
         # Fallback: create a simple text file
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as temp_file:
             temp_file.write(content)
@@ -615,4 +602,93 @@ async def download_generated_document(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error downloading document: {str(e)}") 
+        raise HTTPException(status_code=500, detail=f"Error downloading document: {str(e)}")
+
+@router.get("/preview")
+async def preview_resume(
+    request: Request,
+    token: str = Query(..., description="Authentication token")
+):
+    """Preview the uploaded resume PDF in an iframe"""
+    try:
+        user_id = get_current_user_id(token)
+        
+        # Get database directly from app state
+        db = request.app.mongodb
+        
+        user = await db.users.find_one({"_id": ObjectId(user_id)})
+        if not user or not user.get("resume_file_path"):
+            raise HTTPException(status_code=404, detail="Resume file not found")
+        
+        file_path = user["resume_file_path"]
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="Resume file not found")
+        
+        filename = os.path.basename(file_path)
+        return FileResponse(
+            path=file_path,
+            filename=filename,
+            media_type='application/pdf',
+            headers={
+                'Content-Disposition': f'inline; filename="{filename}"',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error previewing resume: {str(e)}")
+
+async def perform_basic_ats_analysis(resume_file: UploadFile, job_description: str, temp_file_path: str) -> dict:
+    """Perform basic ATS analysis when web scraping fails"""
+    try:
+        # Read the resume content
+        with open(temp_file_path, 'rb') as f:
+            resume_content = f.read()
+        
+        # Parse the PDF to extract text
+        parse_result = resume_parser.extract_text_from_pdf(resume_content)
+        resume_text = str(parse_result.get('full_text', '')) if parse_result.get('parsed_successfully') else ''
+        
+        # Basic keyword matching
+        job_keywords = set(job_description.lower().split())  # type: ignore
+        resume_keywords = set(resume_text.lower().split())
+        
+        # Calculate basic match percentage
+        common_keywords = job_keywords.intersection(resume_keywords)
+        match_percentage = len(common_keywords) / len(job_keywords) * 100 if job_keywords else 0
+        
+        # Generate basic feedback
+        feedback = [
+            f"Basic ATS Analysis Results:",
+            f"Keyword Match: {len(common_keywords)} out of {len(job_keywords)} keywords found",
+            f"Match Percentage: {match_percentage:.1f}%",
+            "",
+            "Recommendations:",
+            "• Ensure your resume includes relevant keywords from the job description",
+            "• Use industry-standard terminology",
+            "• Include specific skills and technologies mentioned in the job posting",
+            "• Keep formatting simple and ATS-friendly",
+            "• Avoid graphics, tables, or complex layouts"
+        ]
+        
+        if common_keywords:
+            feedback.append(f"• Found keywords: {', '.join(list(common_keywords)[:10])}")
+        
+        return {
+            "success": True,
+            "feedback": feedback,
+            "resume_filename": resume_file.filename,
+            "job_description_preview": job_description[:100] + "..." if len(job_description) > 100 else job_description,
+            "match_percentage": round(match_percentage, 1),
+            "analysis_type": "basic"
+        }
+        
+    finally:
+        # Clean up temporary file
+        try:
+            os.unlink(temp_file_path)
+        except:
+            pass 

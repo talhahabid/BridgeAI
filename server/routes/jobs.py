@@ -12,9 +12,8 @@ router = APIRouter()
 JSEARCH_API_URL = "https://jsearch.p.rapidapi.com/search"
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY")
 
-# Print the API key (masked for security)
 if not RAPIDAPI_KEY:
-    # print("Warning: RAPIDAPI_KEY not found in environment variables")
+    # RapidAPI key not configured
     pass
 
 HEADERS = {

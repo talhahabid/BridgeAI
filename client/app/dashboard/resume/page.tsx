@@ -32,9 +32,7 @@ interface GeneratedDocument {
 export default function ResumePage() {
   const [resumeData, setResumeData] = useState<ResumeData | null>(null)
   const [isUploading, setIsUploading] = useState(false)
-  const [showPreview, setShowPreview] = useState(false)
-  const [showATSEvaluation, setShowATSEvaluation] = useState(false)
-  const [showDocumentGenerator, setShowDocumentGenerator] = useState(false)
+  const [activeTab, setActiveTab] = useState<'generate' | 'ats' | 'preview'>('generate')
   const [jobDescription, setJobDescription] = useState('')
   const [atsEvaluation, setAtsEvaluation] = useState<ATSEvaluation | null>(null)
   const [isEvaluating, setIsEvaluating] = useState(false)
@@ -405,25 +403,25 @@ export default function ResumePage() {
                 </div>
                 <div className="flex items-center space-x-3">
                   <button
-                    onClick={() => setShowDocumentGenerator(!showDocumentGenerator)}
-                    className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500/20 to-purple-600/20 hover:from-blue-500/30 hover:to-purple-600/30 rounded-xl border border-blue-500/30 transition-all text-white"
+                    onClick={() => setActiveTab('generate')}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-xl border transition-all text-white ${activeTab === 'generate' ? 'bg-gradient-to-r from-blue-500/20 to-purple-600/20 border-blue-500/30' : 'bg-slate-700/50 border-slate-600 hover:bg-slate-600/50'}`}
                   >
                     <FilePlus className="w-4 h-4" />
                     <span>Generate Documents</span>
                   </button>
                   <button
-                    onClick={() => setShowATSEvaluation(!showATSEvaluation)}
-                    className="flex items-center space-x-2 px-4 py-2 bg-slate-700/50 hover:bg-slate-600/50 rounded-xl border border-slate-600 transition-all text-white"
+                    onClick={() => setActiveTab('ats')}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-xl border transition-all text-white ${activeTab === 'ats' ? 'bg-gradient-to-r from-blue-500/20 to-purple-600/20 border-blue-500/30' : 'bg-slate-700/50 border-slate-600 hover:bg-slate-600/50'}`}
                   >
                     <Target className="w-4 h-4" />
                     <span>ATS Evaluation</span>
                   </button>
                   <button
-                    onClick={() => setShowPreview(!showPreview)}
-                    className="flex items-center space-x-2 px-4 py-2 bg-slate-700/50 hover:bg-slate-600/50 rounded-xl border border-slate-600 transition-all text-white"
+                    onClick={() => setActiveTab('preview')}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-xl border transition-all text-white ${activeTab === 'preview' ? 'bg-gradient-to-r from-blue-500/20 to-purple-600/20 border-blue-500/30' : 'bg-slate-700/50 border-slate-600 hover:bg-slate-600/50'}`}
                   >
                     <Eye className="w-4 h-4" />
-                    <span>{showPreview ? 'Hide' : 'Show'} Preview</span>
+                    <span>Show Preview</span>
                   </button>
                   <button
                     onClick={removeResume}
@@ -434,58 +432,10 @@ export default function ResumePage() {
                   </button>
                 </div>
               </div>
-
-              <div className="grid md:grid-cols-2 gap-8">
-                {/* File Information */}
-                <div className="bg-slate-700/30 rounded-xl p-6 border border-slate-600/50">
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
-                    <FileText className="w-5 h-5 text-blue-400" />
-                    <span>File Information</span>
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Filename</span>
-                      <span className="text-white font-medium">{resumeData.resume_filename}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Status</span>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                        <span className="text-green-400 font-medium">Successfully Parsed</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Content Length</span>
-                      <span className="text-white font-medium">{resumeData.resume_text?.length || 0} characters</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Keywords */}
-                <div className="bg-slate-700/30 rounded-xl p-6 border border-slate-600/50">
-                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
-                    <Zap className="w-5 h-5 text-purple-400" />
-                    <span>Extracted Keywords</span>
-                    <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full">
-                      {resumeData.resume_keywords?.length || 0}
-                    </span>
-                  </h3>
-                  <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-                    {resumeData.resume_keywords?.map((keyword, index) => (
-                      <span
-                        key={index}
-                        className="px-3 py-1 bg-gradient-to-r from-blue-500/20 to-purple-600/20 text-blue-300 text-sm rounded-full border border-blue-500/30 hover:border-blue-400/50 transition-all"
-                      >
-                        {keyword}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
             </div>
 
             {/* Document Generator Section */}
-            {showDocumentGenerator && (
+            {activeTab === 'generate' && (
               <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-8 border border-slate-700/50">
                 <h2 className="text-xl font-semibold text-white mb-4 flex items-center">
                   <FileEdit className="w-5 h-5 mr-2 text-blue-400" />
@@ -588,7 +538,7 @@ export default function ResumePage() {
             )}
 
             {/* ATS Evaluation Section */}
-            {showATSEvaluation && (
+            {activeTab === 'ats' && (
               <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-8 border border-slate-700/50">
                 <h2 className="text-xl font-semibold text-white mb-4 flex items-center">
                   <Target className="w-5 h-5 mr-2 text-blue-400" />
@@ -636,20 +586,118 @@ export default function ResumePage() {
 
                 {/* ATS Evaluation Results */}
                 {atsEvaluation && (
-                  <div className="mt-6 p-4 bg-blue-500/10 rounded-lg border border-blue-500/30">
-                    <h3 className="text-lg font-semibold text-white mb-3 flex items-center">
-                      <Star className="w-5 h-5 mr-2 text-blue-400" />
+                  <div className="mt-6 p-6 bg-slate-900/60 rounded-2xl border border-blue-500/30 shadow-lg">
+                    <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                      <Star className="w-6 h-6 text-blue-400" />
                       ATS Evaluation Results
                     </h3>
-                    <div className="space-y-3">
-                      {atsEvaluation.feedback.map((feedback, index) => (
-                        <div key={index} className="flex items-start">
-                          <div className="w-2 h-2 bg-blue-400 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                          <p className="text-slate-300 text-sm leading-relaxed">{feedback}</p>
-                        </div>
-                      ))}
+                    <div className="space-y-4">
+                      {/* Try to extract and style key sections if present in feedback */}
+                      {(() => {
+                        // Join feedback into a single string for parsing
+                        const feedbackText = Array.isArray(atsEvaluation.feedback) ? atsEvaluation.feedback.join('\n') : '';
+                        // Regex for Match Percentage
+                        const match = feedbackText.match(/Match Percentage: (\d+)%/);
+                        // Regex for Missing Keywords
+                        const missing = feedbackText.match(/Missing Keywords:([\s\S]*?)\n\n/);
+                        // Regex for Final Thoughts
+                        const final = feedbackText.match(/Final Thoughts:[\s\S]*?\n\n/);
+                        // Regex for Recommendations
+                        const recs = feedbackText.match(/Recommendations:[\s\S]*/);
+                        return (
+                          <>
+                            {match && (() => {
+                              const percent = parseInt(match[1], 10);
+                              let rank = '';
+                              let rankColor = '';
+                              if (percent < 50) {
+                                rank = 'Needs Improvement';
+                                rankColor = 'bg-red-500/20 text-red-400 border-red-500/30';
+                              } else if (percent < 75) {
+                                rank = 'Average';
+                                rankColor = 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+                              } else if (percent < 90) {
+                                rank = 'Good';
+                                rankColor = 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+                              } else {
+                                rank = 'Excellent';
+                                rankColor = 'bg-green-500/20 text-green-400 border-green-500/30';
+                              }
+                              return (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-lg font-semibold text-blue-300">Match Percentage:</span>
+                                  <span className="inline-block px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full font-bold text-lg border border-blue-500/30">{percent}%</span>
+                                  <span className={`inline-block px-3 py-1 rounded-full font-semibold text-sm border ml-2 ${rankColor}`}>{rank}</span>
+                                </div>
+                              );
+                            })()}
+                            {missing && (
+                              <div>
+                                <div className="text-lg font-semibold text-purple-300 mb-2 flex items-center gap-2">
+                                  <Zap className="w-5 h-5 text-purple-400" />
+                                  Missing Keywords
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  {missing[1].split(',').map((kw, i) => (
+                                    <span key={i} className="px-3 py-1 bg-gradient-to-r from-blue-500/20 to-purple-600/20 text-blue-200 text-sm rounded-full border border-blue-500/30">
+                                      {kw.trim()}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {final && (
+                              <div>
+                                <div className="text-lg font-semibold text-green-300 mb-1 flex items-center gap-2">
+                                  <Award className="w-5 h-5 text-orange-400" />
+                                  Final Thoughts
+                                </div>
+                                <div className="bg-slate-800/60 rounded-lg p-4 border border-green-500/20 text-slate-200 text-sm whitespace-pre-line">
+                                  {final[0].replace('Final Thoughts:', '').trim()}
+                                </div>
+                              </div>
+                            )}
+                            {recs && (
+                              <div>
+                                <div className="text-lg font-semibold text-yellow-300 mb-1 flex items-center gap-2">
+                                  <Target className="w-5 h-5 text-yellow-400" />
+                                  Recommendations
+                                </div>
+                                <div className="bg-slate-800/60 rounded-lg p-4 border border-yellow-500/20 text-slate-200 text-sm whitespace-pre-line">
+                                  <ul className="list-none space-y-2 pl-0">
+                                    {recs[0]
+                                      .replace('Recommendations:', '')
+                                      .trim()
+                                      .split(/\.(?=(?!\d)|\")/) // split at period not followed by a digit or at period followed by a double quote
+                                      .map((rec, i) => rec.trim())
+                                      .filter(Boolean)
+                                      .map((rec, i) => (
+                                        <li key={i} className="flex items-start gap-2">
+                                          <span className="mt-1 w-2 h-2 bg-yellow-400 rounded-full inline-block flex-shrink-0"></span>
+                                          <span>{rec}{rec.endsWith('.') ? '' : '.'}</span>
+                                        </li>
+                                      ))}
+                                  </ul>
+                                </div>
+                              </div>
+                            )}
+                            {/* If parsing fails, fallback to original feedback */}
+                            {!match && !missing && !final && !recs && (
+                              <div className="space-y-2">
+                                {Array.isArray(atsEvaluation.feedback) && atsEvaluation.feedback.length > 0 ? (
+                                  atsEvaluation.feedback.map((feedback, index) => (
+                                    <div key={index} className="text-slate-300 text-sm leading-relaxed">{feedback}</div>
+                                  ))
+                                ) : (
+                                  <div className="text-slate-400 text-sm">No feedback available yet.</div>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
-                    <div className="mt-4 pt-4 border-t border-blue-500/30">
+                    <div className="mt-6 pt-4 border-t border-blue-500/30">
                       <p className="text-xs text-slate-400">
                         <strong>Resume:</strong> {atsEvaluation.resume_filename} | 
                         <strong> Job:</strong> {atsEvaluation.job_description_preview}
@@ -660,48 +708,19 @@ export default function ResumePage() {
               </div>
             )}
 
-            {/* Full Text Preview */}
-            {showPreview && resumeData.resume_text && (
+            {/* Resume PDF Preview */}
+            {activeTab === 'preview' && resumeData?.has_resume && (
               <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-8 border border-slate-700/50">
                 <h3 className="text-xl font-bold text-white mb-6 flex items-center space-x-2">
                   <Eye className="w-6 h-6 text-blue-400" />
-                  <span>Full Resume Text</span>
+                  <span>Resume PDF Preview</span>
                 </h3>
-                <div className="bg-slate-900/50 rounded-xl p-6 border border-slate-600/50">
-                  <div className="max-h-96 overflow-y-auto">
-                    <div className="text-sm text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
-                      {resumeData.resume_text}
-                    </div>
-                  </div>
-                  <div className="mt-4 pt-4 border-t border-slate-600/50 flex items-center justify-between text-sm text-slate-400">
-                    <span>Characters: {resumeData.resume_text.length.toLocaleString()}</span>
-                    <span>Keywords: {resumeData.resume_keywords?.length || 0}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Structured Content */}
-            {resumeData.resume_structured && Object.keys(resumeData.resume_structured).length > 0 && (
-              <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-8 border border-slate-700/50">
-                <h3 className="text-xl font-bold text-white mb-6 flex items-center space-x-2">
-                  <Award className="w-6 h-6 text-orange-400" />
-                  <span>Resume Sections</span>
-                </h3>
-                <div className="grid md:grid-cols-2 gap-6">
-                  {Object.entries(resumeData.resume_structured).map(([section, content]) => (
-                    <div key={section} className="bg-slate-700/30 rounded-xl p-6 border border-slate-600/50 hover:border-slate-500/50 transition-all">
-                      <h4 className="text-lg font-semibold text-white mb-4 capitalize flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full"></div>
-                        <span>{section.replace('_', ' ')}</span>
-                      </h4>
-                      <div className="bg-slate-900/30 rounded-lg p-4 max-h-40 overflow-y-auto border border-slate-600/30">
-                        <pre className="text-sm text-slate-300 whitespace-pre-wrap font-sans leading-relaxed">
-                          {content}
-                        </pre>
-                      </div>
-                    </div>
-                  ))}
+                <div className="bg-slate-900/50 rounded-xl p-6 border border-slate-600/50 flex justify-center">
+                  <iframe
+                    src={`${process.env.NEXT_PUBLIC_API_URL}/api/resumes/preview?token=${encodeURIComponent(localStorage.getItem('token') || '')}`}
+                    className="w-full h-[80vh] border border-slate-600 rounded-lg"
+                    title="Resume PDF Preview"
+                  />
                 </div>
               </div>
             )}
