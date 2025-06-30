@@ -69,11 +69,21 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) return
-    axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/friends/friends`, {
-      headers: { Authorization: `Bearer ${token}` }
-    }).then(res => setFriendsCount(res.data.length)).catch(() => setFriendsCount(0))
+    const fetchFriendsCount = async () => {
+      const token = localStorage.getItem('token')
+      if (!token) return
+      
+      try {
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/friends/friends`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        setFriendsCount(response.data.length)
+      } catch (error) {
+        setFriendsCount(0)
+      }
+    }
+    
+    fetchFriendsCount()
   }, [])
 
   const fetchUserProfile = async () => {
@@ -125,6 +135,14 @@ export default function Dashboard() {
     toast.success('Logged out successfully')
   }
 
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const target = e.target as HTMLImageElement;
+    target.style.display = 'none';
+    if (target.nextSibling instanceof HTMLElement) {
+      target.nextSibling.style.display = 'block';
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
@@ -147,13 +165,7 @@ export default function Dashboard() {
                 src="/images/logo.png"
                 alt="BridgeAI Logo"
                 className="w-12 h-12 object-contain transition-transform duration-300 group-hover:scale-110"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                  if (target.nextSibling instanceof HTMLElement) {
-                    target.nextSibling.style.display = 'block';
-                  }
-                }}
+                onError={handleImageError}
               />
             </div>
             <div>

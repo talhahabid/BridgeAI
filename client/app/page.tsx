@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Upload, Search, Target, User, Menu, X, CheckCircle, Star, Brain, Zap, Globe, Sun, Moon, Sparkles, Award, TrendingUp } from 'lucide-react';
+import { ArrowRight, Upload, Search, Target, User, Menu, X, Star, Sparkles, Globe, CheckCircle, TrendingUp, Award, Zap } from 'lucide-react';
 
 export default function LandingPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -13,6 +13,14 @@ export default function LandingPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const target = e.target as HTMLImageElement;
+    target.style.display = 'none';
+    if (target.nextSibling instanceof HTMLElement) {
+      target.nextSibling.style.display = 'block';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-800 text-white overflow-x-hidden">
       {/* Animated Background Elements */}
@@ -23,67 +31,60 @@ export default function LandingPage() {
       </div>
 
       {/* Navigation */}
-      <nav className={`fixed w-full z-50 transition-all duration-500 ${scrollY > 50 ? 'bg-slate-900/95 backdrop-blur-xl border-b border-blue-500/20 shadow-2xl' : 'bg-slate-900/20 backdrop-blur-sm'}`}>        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center py-4">
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-3 group">
-              <div className="relative">
-                <img
-                  src="/images/logo.png"
-                  alt="BridgeAI Logo"
-                  className="w-12 h-12 object-contain transition-transform duration-300 group-hover:scale-110"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    if (target.nextSibling instanceof HTMLElement) {
-                      target.nextSibling.style.display = 'block';
-                    }
-                  }}
-                />
-
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center shadow-lg hidden">
-
+      <nav className={`fixed w-full z-50 transition-all duration-500 ${scrollY > 50 ? 'bg-slate-900/95 backdrop-blur-xl border-b border-blue-500/20 shadow-2xl' : 'bg-slate-900/20 backdrop-blur-sm'}`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-3 group">
+                <div className="relative">
+                  <img
+                    src="/images/logo.png"
+                    alt="BridgeAI Logo"
+                    className="w-12 h-12 object-contain transition-transform duration-300 group-hover:scale-110"
+                    onError={handleImageError}
+                  />
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center shadow-lg hidden"></div>
+                  <div className="absolute inset-0 bg-blue-400/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </div>
-                <div className="absolute inset-0 bg-blue-400/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <span className="text-2xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
+                  BridgeAI
+                </span>
               </div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
-                BridgeAI
-              </span>
             </div>
-          </div>
 
-          <div className="hidden md:flex items-center space-x-8">
-            <a href="#features" className="text-blue-100 hover:text-white transition-all duration-300 font-medium relative group">
-              Features
-              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-400 transition-all duration-300 group-hover:w-full"></span>
-            </a>
-            <a href="#how-it-works" className="text-blue-100 hover:text-white transition-all duration-300 font-medium relative group">
-              How It Works
-              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-400 transition-all duration-300 group-hover:w-full"></span>
-            </a>
-            <a href="#success-stories" className="text-blue-100 hover:text-white transition-all duration-300 font-medium relative group">
-              Success Stories
-              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-400 transition-all duration-300 group-hover:w-full"></span>
-            </a>
-            <div className="flex items-center space-x-4">
-              <a href="/login-signup" className="text-blue-100 hover:text-white transition-colors font-medium">Login</a>
-              <a href="/login-signup" className="group relative bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white px-6 py-2.5 rounded-xl transition-all duration-300 font-medium shadow-lg hover:shadow-blue-500/25 overflow-hidden">
-                <span className="relative z-10">Get Started</span>
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-blue-300 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+            <div className="hidden md:flex items-center space-x-8">
+              <a href="#features" className="text-blue-100 hover:text-white transition-all duration-300 font-medium relative group">
+                Features
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-400 transition-all duration-300 group-hover:w-full"></span>
               </a>
+              <a href="#how-it-works" className="text-blue-100 hover:text-white transition-all duration-300 font-medium relative group">
+                How It Works
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-400 transition-all duration-300 group-hover:w-full"></span>
+              </a>
+              <a href="#success-stories" className="text-blue-100 hover:text-white transition-all duration-300 font-medium relative group">
+                Success Stories
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-400 transition-all duration-300 group-hover:w-full"></span>
+              </a>
+              <div className="flex items-center space-x-4">
+                <a href="/login-signup" className="text-blue-100 hover:text-white transition-colors font-medium">Login</a>
+                <a href="/login-signup" className="group relative bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white px-6 py-2.5 rounded-xl transition-all duration-300 font-medium shadow-lg hover:shadow-blue-500/25 overflow-hidden">
+                  <span className="relative z-10">Get Started</span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-blue-300 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+                </a>
+              </div>
             </div>
-          </div>
 
-          <div className="md:hidden">
-            <button
-              className="text-white hover:text-blue-200 transition-colors"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-            >
-              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
+            <div className="md:hidden">
+              <button
+                className="text-white hover:text-blue-200 transition-colors"
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                aria-label="Toggle menu"
+              >
+                {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
         {/* Mobile Menu */}
         {isMenuOpen && (
@@ -435,13 +436,7 @@ export default function LandingPage() {
                   src="/images/logo.png"
                   alt="BridgeAI Logo"
                   className="w-12 h-12 object-contain transition-transform duration-300 group-hover:scale-110"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    if (target.nextSibling instanceof HTMLElement) {
-                      target.nextSibling.style.display = 'block';
-                    }
-                  }}
+                  onError={handleImageError}
                 />
                 <span className="text-2xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
                   BridgeAI
