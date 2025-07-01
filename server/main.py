@@ -5,6 +5,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 import os
 import logging
+import asyncio
 
 from routes import auth, users, resumes, jobs, qualifications, friends, websocket, chat
 from database import get_database
@@ -37,6 +38,11 @@ async def lifespan(app: FastAPI):
         
         app.mongodb = app.mongodb_client.immigrant_job_finder  # type: ignore[attr-defined]
         
+        # Start WebSocket heartbeat monitor
+        from websocket_manager import manager
+        app.heartbeat_task = asyncio.create_task(manager.start_heartbeat_monitor())
+        logger.info("WebSocket heartbeat monitor started")
+        
     except Exception as e:
         logger.error(f"Failed to connect to MongoDB: {e}")
         raise
@@ -47,6 +53,11 @@ async def lifespan(app: FastAPI):
     if hasattr(app, 'mongodb_client'):
         app.mongodb_client.close()  # type: ignore[attr-defined]
         logger.info("Disconnected from MongoDB")
+    
+    # Cancel heartbeat task
+    if hasattr(app, 'heartbeat_task') and app.heartbeat_task:
+        app.heartbeat_task.cancel()
+        logger.info("WebSocket heartbeat monitor stopped")
 
 app = FastAPI(
     title="ImmigrantJobFinder API",

@@ -41,6 +41,8 @@ async def websocket_endpoint(
                 await handle_typing_indicator(message_data, user_id)
             elif message_data.get("type") == "mark_read":
                 await manager.handle_mark_read(message_data, user_id)
+            elif message_data.get("type") == "heartbeat":
+                await manager.handle_heartbeat(user_id)
                 
     except WebSocketDisconnect:
         manager.disconnect(user_id)
