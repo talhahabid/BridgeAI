@@ -321,6 +321,7 @@ export default function LandingPage() {
             <h2 className="text-5xl md:text-6xl font-bold mb-8">
               <span className="bg-gradient-to-r from-white via-blue-100 to-white bg-clip-text text-transparent">
                 Success Stories
+              </span>
             </h2>
             <p className="text-xl text-blue-200 italic">
             Illustrative journeys based on real challenges faced by internationally trained professionals
