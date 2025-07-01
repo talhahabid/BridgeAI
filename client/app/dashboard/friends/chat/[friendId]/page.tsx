@@ -109,10 +109,18 @@ export default function ChatPage() {
 
     // Construct WebSocket URL properly
     let wsUrl: string
+    console.log('NEXT_PUBLIC_WS_URL:', process.env.NEXT_PUBLIC_WS_URL)
+    
     if (process.env.NEXT_PUBLIC_WS_URL) {
-      // If WS_URL is provided, use it directly (should be full URL)
-      const wsBaseUrl = process.env.NEXT_PUBLIC_WS_URL.replace(/^https?:\/\//, '')
-      wsUrl = `wss://${wsBaseUrl}/ws/chat/${userId}?token=${encodeURIComponent(token)}`
+      // If WS_URL is provided, convert it to WebSocket URL
+      let apiUrl = process.env.NEXT_PUBLIC_WS_URL
+      console.log('API URL from env:', apiUrl)
+      
+      // Clean up the URL - remove any existing protocols (wss://, ws://, https://, http://)
+      apiUrl = apiUrl.replace(/^(wss?:\/\/|https?:\/\/)/, '')
+      console.log('Host after protocol removal:', apiUrl)
+      
+      wsUrl = `wss://${apiUrl}/ws/chat/${userId}?token=${encodeURIComponent(token)}`
     } else {
       // Fallback to current host
       const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -120,7 +128,7 @@ export default function ChatPage() {
       wsUrl = `${wsProtocol}//${wsHost}/ws/chat/${userId}?token=${encodeURIComponent(token)}`
     }
 
-    console.log('Connecting to WebSocket:', wsUrl)
+    console.log('Final WebSocket URL:', wsUrl)
     const ws = new WebSocket(wsUrl)
 
     // Add connection timeout
