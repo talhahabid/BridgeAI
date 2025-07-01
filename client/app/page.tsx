@@ -320,7 +320,7 @@ export default function LandingPage() {
           <div className="text-center mb-20">
             <h2 className="text-5xl md:text-6xl font-bold mb-8">
               <span className="bg-gradient-to-r from-white via-blue-100 to-white bg-clip-text text-transparent">
-                Real Success Stories
+                Success Stories
               </span>
             </h2>
             <p className="text-xl text-blue-200">
@@ -343,7 +343,7 @@ export default function LandingPage() {
                   S
                 </div>
                 <div className="ml-4">
-                  <div className="text-white font-bold text-lg">Sarah Chen</div>
+                  <div className="text-white font-bold text-lg">John Doe</div>
                   <div className="text-blue-200">Professional Engineer</div>
                 </div>
               </div>
@@ -363,7 +363,7 @@ export default function LandingPage() {
                   R
                 </div>
                 <div className="ml-4">
-                  <div className="text-white font-bold text-lg">Dr. Raj Patel</div>
+                  <div className="text-white font-bold text-lg">Jane Roe</div>
                   <div className="text-blue-200">Family Physician</div>
                 </div>
               </div>
@@ -383,7 +383,7 @@ export default function LandingPage() {
                   A
                 </div>
                 <div className="ml-4">
-                  <div className="text-white font-bold text-lg">Amara Okafor</div>
+                  <div className="text-white font-bold text-lg">Joe Patel</div>
                   <div className="text-blue-200">Senior Financial Analyst</div>
                 </div>
               </div>
