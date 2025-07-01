@@ -81,4 +81,20 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"} 
+    return {"status": "healthy"}
+
+# Startup script for Render deployment
+if __name__ == "__main__":
+    import uvicorn
+    
+    # Get port from environment variable (Render provides this)
+    port = int(os.getenv("PORT", "8000"))
+    
+    # Bind to all interfaces for Render
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=port,
+        reload=False,
+        log_level="info"
+    ) 
