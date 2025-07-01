@@ -61,6 +61,11 @@ async def signup(user_data: UserCreate, request: Request):
 async def login(user_data: UserLogin, request: Request):
     """Login user and return JWT token."""
     try:
+        # Log request details for debugging
+        print(f"Login request received: {request.method} {request.url}")
+        print(f"Request headers: {dict(request.headers)}")
+        print(f"User data: {user_data}")
+        
         db = await get_database(request)
         
         # Find user by email

@@ -56,13 +56,27 @@ app = FastAPI(
 )
 
 # CORS middleware - configure for production
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+# For development, allow all origins. For production, set ALLOWED_ORIGINS env var
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS")
+if allowed_origins_env:
+    allowed_origins = allowed_origins_env.split(",")
+else:
+    # Default origins for development and production
+    allowed_origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000", 
+        "https://bridgeai.club",
+        "https://www.bridgeai.club",
+        "https://bridge-ai-gamma.vercel.app"
+    ]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Include routers
@@ -82,6 +96,11 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+@app.get("/cors-test")
+async def cors_test():
+    """Test endpoint to verify CORS is working"""
+    return {"message": "CORS is working", "timestamp": "2024-01-01T00:00:00Z"}
 
 # Startup script for Render deployment
 if __name__ == "__main__":
