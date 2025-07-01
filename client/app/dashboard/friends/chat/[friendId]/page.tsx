@@ -31,15 +31,20 @@ export default function ChatPage() {
     }
 
     loadChatHistory()
-    connectWebSocket(userId)
     markMessagesAsRead()
     
+    // Connect WebSocket when entering chat
+    connectWebSocket(userId)
+    
     return () => {
+      // Disconnect WebSocket when leaving chat
       if (wsRef.current) {
         wsRef.current.close()
+        wsRef.current = null
       }
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current)
+        typingTimeoutRef.current = null
       }
     }
   }, [router, friendId])
@@ -137,7 +142,7 @@ export default function ChatPage() {
         console.error('WebSocket connection timeout')
         ws.close()
         setIsConnected(false)
-        toast.error('Connection timeout. Please try again.')
+        toast.error('Connection timeout. Please refresh the page to try again.')
       }
     }, 10000) // 10 second timeout
 
@@ -172,23 +177,15 @@ export default function ChatPage() {
         return
       }
 
-      // Show reconnection message
-      toast.error('Connection lost. Reconnecting...')
-
-      // Try to reconnect after 3 seconds
-      setTimeout(() => {
-        if (localStorage.getItem('userId') && localStorage.getItem('token')) {
-          console.log('Attempting to reconnect...')
-          connectWebSocket(localStorage.getItem('userId')!)
-        }
-      }, 3000)
+      // Show connection lost message without reconnecting
+      toast.error('Connection lost. Please refresh the page to try again.')
     }
 
     ws.onerror = (error) => {
       console.error('WebSocket error:', error)
       clearTimeout(connectionTimeout)
       setIsConnected(false)
-      toast.error('Connection error. Please check your internet connection.')
+      toast.error('Connection failed. Please refresh the page to try again.')
     }
 
     wsRef.current = ws
@@ -325,6 +322,17 @@ export default function ChatPage() {
                       <>
                         <WifiOff className="w-4 h-4 text-red-400" />
                         <span className="text-red-400 text-sm font-medium">Disconnected</span>
+                        <button
+                          onClick={() => {
+                            const userId = localStorage.getItem('userId')
+                            if (userId) {
+                              connectWebSocket(userId)
+                            }
+                          }}
+                          className="ml-2 px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+                        >
+                          Try Again
+                        </button>
                       </>
                     )}
                   </div>
