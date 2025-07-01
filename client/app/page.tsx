@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { ArrowRight, Upload, Search, Target, User, Menu, X, Star, Sparkles, Globe, CheckCircle, TrendingUp, Award, Zap } from 'lucide-react';
 
 export default function LandingPage() {
@@ -140,10 +141,10 @@ export default function LandingPage() {
                 </span>
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-blue-300 opacity-0 group-hover:opacity-30 transition-opacity duration-300"></div>
               </a>
-              <button className="group relative border-2 border-blue-400/50 hover:border-blue-400 text-white hover:bg-blue-400/10 px-12 py-5 rounded-2xl text-xl font-bold transition-all duration-500 flex items-center backdrop-blur-sm">
+              <Link href="https://devpost.com/software/bridgeai-t4fbej" className="group relative border-2 border-blue-400/50 hover:border-blue-400 text-white hover:bg-blue-400/10 px-12 py-5 rounded-2xl text-xl font-bold transition-all duration-500 flex items-center backdrop-blur-sm">
                 <span>Watch Demo</span>
                 <div className="ml-3 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-              </button>
+              </Link>
             </div>
 
             {/* Achievement Stats */}
