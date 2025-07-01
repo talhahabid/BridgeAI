@@ -74,4 +74,9 @@ async def handle_typing_indicator(message_data: dict, sender_id: str):
 @router.get("/online-users")
 async def get_online_users():
     """Get list of online users"""
-    return {"online_users": list(manager.get_online_users())} 
+    return {"online_users": list(manager.get_online_users())}
+
+@router.get("/connection-stats")
+async def get_connection_stats():
+    """Get WebSocket connection statistics"""
+    return manager.get_connection_stats() 

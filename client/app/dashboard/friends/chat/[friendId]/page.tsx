@@ -107,41 +107,62 @@ export default function ChatPage() {
       return
     }
 
-    // Use environment variable for WebSocket URL, fallback to localhost for development
+    // Use environment variable for WebSocket URL, fallback to current host for production
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const wsHost = process.env.NEXT_PUBLIC_WS_URL || window.location.hostname
-    const wsPort = process.env.NEXT_PUBLIC_WS_PORT || '8000'
-    const wsUrl = `${wsProtocol}//${wsHost}:${wsPort}/ws/chat/${userId}?token=${encodeURIComponent(token)}`
+    const wsHost = process.env.NEXT_PUBLIC_WS_URL || window.location.host
+    const wsUrl = `${wsProtocol}//${wsHost}/ws/chat/${userId}?token=${encodeURIComponent(token)}`
 
     console.log('Connecting to WebSocket:', wsUrl)
     const ws = new WebSocket(wsUrl)
 
+    // Add connection timeout
+    const connectionTimeout = setTimeout(() => {
+      if (ws.readyState === WebSocket.CONNECTING) {
+        console.error('WebSocket connection timeout')
+        ws.close()
+        setIsConnected(false)
+        toast.error('Connection timeout. Please try again.')
+      }
+    }, 10000) // 10 second timeout
+
     ws.onopen = () => {
       console.log('WebSocket connected')
+      clearTimeout(connectionTimeout)
       setIsConnected(true)
+      toast.success('Connected to chat')
     }
 
     ws.onmessage = (event) => {
-      const data = JSON.parse(event.data)
-      handleWebSocketMessage(data)
+      try {
+        const data = JSON.parse(event.data)
+        handleWebSocketMessage(data)
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error)
+      }
     }
 
     ws.onclose = (event) => {
       console.log('WebSocket disconnected:', event.code, event.reason)
+      clearTimeout(connectionTimeout)
       setIsConnected(false)
 
       // Don't reconnect if unauthorized
       if (event.code === 4001) {
         console.error('WebSocket unauthorized, redirecting to login')
+        toast.error('Authentication failed. Please login again.')
         localStorage.removeItem('token')
         localStorage.removeItem('userId')
         router.push('/')
         return
       }
 
+      // Show reconnection message
+      toast.error('Connection lost. Reconnecting...')
+
       // Try to reconnect after 3 seconds
       setTimeout(() => {
         if (localStorage.getItem('userId') && localStorage.getItem('token')) {
+          console.log('Attempting to reconnect...')
           connectWebSocket(localStorage.getItem('userId')!)
         }
       }, 3000)
@@ -149,7 +170,9 @@ export default function ChatPage() {
 
     ws.onerror = (error) => {
       console.error('WebSocket error:', error)
+      clearTimeout(connectionTimeout)
       setIsConnected(false)
+      toast.error('Connection error. Please check your internet connection.')
     }
 
     wsRef.current = ws

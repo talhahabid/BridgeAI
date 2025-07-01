@@ -23,6 +23,8 @@ class ConnectionManager:
         self.chat_service = None
         # Heartbeat task
         self.heartbeat_task = None
+        # Connection limits for Render
+        self.max_connections = 100  # Adjust based on your Render plan
 
     async def _get_chat_service(self):
         """Get chat service instance with database connection"""
@@ -32,18 +34,27 @@ class ConnectionManager:
         return self.chat_service
 
     async def connect(self, websocket: WebSocket, user_id: str):
+        # Check connection limits
+        if len(self.active_connections) >= self.max_connections:
+            logger.warning(f"Connection limit reached ({self.max_connections})")
+            await websocket.close(code=1013, reason="Server overloaded")
+            return False
+
         await websocket.accept()
         self.active_connections[user_id] = websocket
         self.user_chat_rooms[user_id] = set()
         self.last_heartbeat[user_id] = datetime.utcnow()
-        logger.info(f"User {user_id} connected")
+        logger.info(f"User {user_id} connected. Total connections: {len(self.active_connections)}")
         
         # Send connection confirmation
         await self.send_personal_message({
             "type": "connection_established",
             "user_id": user_id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
+            "connection_id": f"conn_{user_id}_{datetime.utcnow().timestamp()}"
         }, user_id)
+        
+        return True
 
     def disconnect(self, user_id: str):
         if user_id in self.active_connections:
@@ -52,7 +63,7 @@ class ConnectionManager:
             del self.user_chat_rooms[user_id]
         if user_id in self.last_heartbeat:
             del self.last_heartbeat[user_id]
-        logger.info(f"User {user_id} disconnected")
+        logger.info(f"User {user_id} disconnected. Total connections: {len(self.active_connections)}")
 
     async def send_personal_message(self, message: dict, user_id: str):
         if user_id in self.active_connections:
@@ -169,5 +180,14 @@ class ConnectionManager:
 
     def get_connection_count(self) -> int:
         return len(self.active_connections)
+
+    def get_connection_stats(self) -> dict:
+        """Get connection statistics for monitoring"""
+        return {
+            "total_connections": len(self.active_connections),
+            "max_connections": self.max_connections,
+            "online_users": list(self.active_connections.keys()),
+            "last_heartbeat_count": len(self.last_heartbeat)
+        }
 
 manager = ConnectionManager() 
