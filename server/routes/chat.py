@@ -27,7 +27,7 @@ async def get_chat_messages(
         chat_service = ChatService(db)
         
         # Get messages
-        messages = await chat_service.get_messages(current_user_id, other_user_id, limit, skip)
+        messages = await chat_service.get_messages(current_user_id, other_user_id, limit)
         
         return {
             "success": True,
