@@ -107,10 +107,18 @@ export default function ChatPage() {
       return
     }
 
-    // Use environment variable for WebSocket URL, fallback to current host for production
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const wsHost = process.env.NEXT_PUBLIC_WS_URL || window.location.host
-    const wsUrl = `${wsProtocol}//${wsHost}/ws/chat/${userId}?token=${encodeURIComponent(token)}`
+    // Construct WebSocket URL properly
+    let wsUrl: string
+    if (process.env.NEXT_PUBLIC_WS_URL) {
+      // If WS_URL is provided, use it directly (should be full URL)
+      const wsBaseUrl = process.env.NEXT_PUBLIC_WS_URL.replace(/^https?:\/\//, '')
+      wsUrl = `wss://${wsBaseUrl}/ws/chat/${userId}?token=${encodeURIComponent(token)}`
+    } else {
+      // Fallback to current host
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      const wsHost = window.location.host
+      wsUrl = `${wsProtocol}//${wsHost}/ws/chat/${userId}?token=${encodeURIComponent(token)}`
+    }
 
     console.log('Connecting to WebSocket:', wsUrl)
     const ws = new WebSocket(wsUrl)

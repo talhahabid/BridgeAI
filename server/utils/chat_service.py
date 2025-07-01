@@ -49,10 +49,18 @@ class ChatService:
     async def get_messages(self, user1_id: str, user2_id: str, limit: int = 50) -> List[Dict[str, Any]]:
         """Get chat messages between two users"""
         try:
+            # Validate ObjectIds
+            try:
+                user1_obj_id = ObjectId(user1_id)
+                user2_obj_id = ObjectId(user2_id)
+            except Exception as e:
+                logger.error(f"Invalid ObjectId: user1_id={user1_id}, user2_id={user2_id}, error={e}")
+                raise ValueError(f"Invalid user ID format: {e}")
+            
             cursor = self.messages.find({
                 "$or": [
-                    {"sender_id": ObjectId(user1_id), "receiver_id": ObjectId(user2_id)},
-                    {"sender_id": ObjectId(user2_id), "receiver_id": ObjectId(user1_id)}
+                    {"sender_id": user1_obj_id, "receiver_id": user2_obj_id},
+                    {"sender_id": user2_obj_id, "receiver_id": user1_obj_id}
                 ]
             }).sort("timestamp", -1).limit(limit)
             
@@ -80,10 +88,18 @@ class ChatService:
     async def mark_messages_as_read(self, user_id: str, sender_id: str) -> bool:
         """Mark messages from a specific sender as read"""
         try:
+            # Validate ObjectIds
+            try:
+                user_obj_id = ObjectId(user_id)
+                sender_obj_id = ObjectId(sender_id)
+            except Exception as e:
+                logger.error(f"Invalid ObjectId: user_id={user_id}, sender_id={sender_id}, error={e}")
+                raise ValueError(f"Invalid user ID format: {e}")
+            
             result = await self.messages.update_many(
                 {
-                    "sender_id": ObjectId(sender_id),
-                    "receiver_id": ObjectId(user_id),
+                    "sender_id": sender_obj_id,
+                    "receiver_id": user_obj_id,
                     "read": False
                 },
                 {"$set": {"read": True}}

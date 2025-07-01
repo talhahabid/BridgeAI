@@ -323,8 +323,8 @@ export default function LandingPage() {
                 Success Stories
               </span>
             </h2>
-            <p className="text-xl text-blue-200">
-              Professionals who transformed their careers with BridgeAI
+            <p className="text-xl text-blue-200 italic">
+            Illustrative journeys based on real challenges faced by internationally trained professionals
             </p>
           </div>
 
@@ -343,7 +343,7 @@ export default function LandingPage() {
                   S
                 </div>
                 <div className="ml-4">
-                  <div className="text-white font-bold text-lg">John Doe</div>
+                  <div className="text-white font-bold text-lg">Sarah Chen</div>
                   <div className="text-blue-200">Professional Engineer</div>
                 </div>
               </div>
@@ -363,7 +363,7 @@ export default function LandingPage() {
                   R
                 </div>
                 <div className="ml-4">
-                  <div className="text-white font-bold text-lg">Jane Roe</div>
+                  <div className="text-white font-bold text-lg">Dr. Raj Patel</div>
                   <div className="text-blue-200">Family Physician</div>
                 </div>
               </div>
@@ -383,7 +383,7 @@ export default function LandingPage() {
                   A
                 </div>
                 <div className="ml-4">
-                  <div className="text-white font-bold text-lg">Joe Patel</div>
+                  <div className="text-white font-bold text-lg">Amara Okafor</div>
                   <div className="text-blue-200">Senior Financial Analyst</div>
                 </div>
               </div>

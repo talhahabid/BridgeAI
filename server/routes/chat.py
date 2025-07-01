@@ -35,7 +35,13 @@ async def get_chat_messages(
             "has_more": len(messages) == limit
         }
         
+    except ValueError as e:
+        # Handle validation errors (like invalid ObjectId)
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error getting chat messages: {e}")
         raise HTTPException(status_code=500, detail=f"Error getting messages: {str(e)}")
 
 @router.get("/sessions")
@@ -86,7 +92,13 @@ async def mark_messages_as_read(
             "message": "Messages marked as read" if success else "No messages to mark as read"
         }
         
+    except ValueError as e:
+        # Handle validation errors (like invalid ObjectId)
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error marking messages as read: {e}")
         raise HTTPException(status_code=500, detail=f"Error marking messages as read: {str(e)}")
 
 @router.get("/unread-count")
