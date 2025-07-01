@@ -507,9 +507,8 @@ async def generate_qualification_path(
             "resume_keywords": user.get("resume_keywords", [])
         }
         
-        # If Gemini fails, fall back to the basic method
-        if not result.get('success'):
-            result = generate_fallback_qualification_path(user_data)
+        # Generate qualification path using the fallback method
+        result = generate_fallback_qualification_path(user_data)
         
         if not result.get('success'):
             raise HTTPException(
